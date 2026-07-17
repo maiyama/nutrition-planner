@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 
 // FDC nutrient number → our Supabase nutrient row ID
 const FDC_TO_DB_NUTRIENT: Record<number, number> = {

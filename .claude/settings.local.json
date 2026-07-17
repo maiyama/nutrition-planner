@@ -11,7 +11,10 @@
       "Bash(git commit *)",
       "Bash(git remote *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://nutrition-planner-maiyama.vercel.app)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(git push *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
