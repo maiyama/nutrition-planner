@@ -1,5 +1,8 @@
+'use client'
+
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
 
 type NutrientGoal = {
   id: number
@@ -10,23 +13,6 @@ type NutrientGoal = {
   nutrient: { id: number; name: string; vitamer_form: string | null; solubility: string | null }
 }
 
-const KEYWORD_TO_TAG: { keywords: string[]; tag: string }[] = [
-  { keywords: ['weight', 'lose', 'fat', 'slim', 'muscle', 'lean', 'body'], tag: 'weight_loss_muscle_retention' },
-  { keywords: ['energy', 'tired', 'fatigue', 'exhausted', 'sluggish'],     tag: 'energy_levels' },
-  { keywords: ['bone', 'osteoporosis', 'calcium', 'fracture', 'density'],  tag: 'bone_health' },
-  { keywords: ['immune', 'immunity', 'sick', 'infection', 'cold', 'flu'],  tag: 'immune_support' },
-  { keywords: ['iron', 'anaemia', 'anemia', 'anaemic', 'anemic'],          tag: 'iron_deficiency' },
-]
-
-function matchTags(goal: string): string[] {
-  const lower = goal.toLowerCase()
-  const tags = new Set<string>()
-  for (const { keywords, tag } of KEYWORD_TO_TAG) {
-    if (keywords.some(k => lower.includes(k))) tags.add(tag)
-  }
-  return tags.size > 0 ? Array.from(tags) : ['energy_levels']
-}
-
 function deduplicateByNutrient(goals: NutrientGoal[]): NutrientGoal[] {
   const seen = new Map<number, NutrientGoal>()
   for (const g of goals) {
@@ -35,9 +21,31 @@ function deduplicateByNutrient(goals: NutrientGoal[]): NutrientGoal[] {
   return Array.from(seen.values())
 }
 
-export default async function GoalPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  const { q } = await searchParams
-  const goal = q ?? ''
+export default function GoalPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-gray-400">Loading…</p>}>
+      <GoalContent />
+    </Suspense>
+  )
+}
+
+function GoalContent() {
+  const searchParams = useSearchParams()
+  const goal = searchParams.get('q') ?? ''
+  const [nutrients, setNutrients] = useState<NutrientGoal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!goal.trim()) { setLoading(false); return }
+    fetch(`/api/nutrients?goal=${encodeURIComponent(goal)}`)
+      .then(r => r.json())
+      .then(data => {
+        setNutrients(deduplicateByNutrient(data.nutrientGoals ?? []))
+        setLoading(false)
+      })
+      .catch(e => { setError(String(e)); setLoading(false) })
+  }, [goal])
 
   if (!goal.trim()) {
     return (
@@ -47,13 +55,8 @@ export default async function GoalPage({ searchParams }: { searchParams: Promise
     )
   }
 
-  const tags = matchTags(goal)
-  const { data: goals } = await supabase
-    .from('nutrient_goals')
-    .select('*, nutrient:nutrients(*)')
-    .in('goal_tag', tags)
-
-  const nutrients = deduplicateByNutrient((goals ?? []) as NutrientGoal[])
+  if (loading) return <p className="text-sm text-gray-400">Finding relevant nutrients…</p>
+  if (error) return <p className="text-sm text-red-500">Error: {error}</p>
 
   return (
     <div className="max-w-2xl">
@@ -66,7 +69,9 @@ export default async function GoalPage({ searchParams }: { searchParams: Promise
       </p>
 
       {nutrients.length === 0 ? (
-        <p className="text-sm text-gray-500">No nutrients matched your goal. Try rephrasing — e.g. "improve energy", "support bone health", or "lose weight".</p>
+        <p className="text-sm text-gray-500">
+          No nutrients matched your goal. Try rephrasing — e.g. "improve energy", "support bone health", or "lose weight".
+        </p>
       ) : (
         <div className="space-y-3">
           {nutrients.map(ng => (
