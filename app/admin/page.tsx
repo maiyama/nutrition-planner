@@ -46,8 +46,9 @@ export default function AdminPage() {
           label: cat.label,
           foodsLoaded: data.foodsLoaded ?? 0,
           nutrientsLoaded: data.nutrientsLoaded ?? 0,
-          errors: data.errors ?? [],
-          status: 'success',
+          errors: data.errors ?? (data.error ? [data.error] : []),
+          status: res.ok ? 'success' : 'error',
+          message: data.error,
         }])
       } catch (e) {
         setResults(prev => [...prev, {
@@ -110,9 +111,14 @@ export default function AdminPage() {
                     <td className="px-3 py-2 text-right text-gray-700">{r.nutrientsLoaded}</td>
                     <td className="px-3 py-2">
                       {r.status === 'error' ? (
-                        <span className="text-red-600">Error: {r.message}</span>
+                        <span className="text-red-600 text-xs">{r.message}</span>
                       ) : r.errors.length > 0 ? (
-                        <span className="text-amber-600">{r.errors.length} warnings</span>
+                        <details>
+                          <summary className="text-amber-600 cursor-pointer text-xs">{r.errors.length} errors — click to expand</summary>
+                          <ul className="mt-1 text-xs text-red-600 space-y-0.5">
+                            {r.errors.map((e, i) => <li key={i}>{e}</li>)}
+                          </ul>
+                        </details>
                       ) : (
                         <span className="text-green-700">OK</span>
                       )}

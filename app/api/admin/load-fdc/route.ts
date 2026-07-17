@@ -18,7 +18,21 @@ const FDC_TO_DB_NUTRIENT: Record<number, number> = {
 }
 
 export async function POST(req: NextRequest) {
+  // Verify env vars are present
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not set in environment' }, { status: 500 })
+  }
+  if (!process.env.FDC_API_KEY) {
+    return NextResponse.json({ error: 'FDC_API_KEY is not set in environment' }, { status: 500 })
+  }
+
   const { query, foodGroup } = await req.json()
+
+  // Test Supabase connectivity before loading
+  const { error: pingErr } = await supabase.from('nutrients').select('id').limit(1)
+  if (pingErr) {
+    return NextResponse.json({ error: `Supabase connection failed: ${pingErr.message}` }, { status: 500 })
+  }
 
   const url =
     `https://api.nal.usda.gov/fdc/v1/foods/search` +
@@ -50,7 +64,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (foodErr || !foodRow) {
-      errors.push(`Food upsert failed: ${food.description} — ${foodErr?.message}`)
+      errors.push(`Food upsert failed: ${food.description} — ${foodErr?.message} (code: ${foodErr?.code})`)
       continue
     }
     foodsLoaded++
