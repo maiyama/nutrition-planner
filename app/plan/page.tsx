@@ -8,6 +8,7 @@ type SelectedFood = {
   food: { id: number; name: string; food_group: string | null }
   nutrientId: number
   nutrientName: string
+  unit: string
   amountRaw: number | null
   amountCooked: number | null
   cookedIsEstimated: boolean
@@ -16,9 +17,9 @@ type SelectedFood = {
   suggestedGrams: number
 }
 
-function nutrientAt(amountPer100g: number | null, grams: number): string {
+function nutrientAt(amountPer100g: number | null, grams: number, unit: string): string {
   if (amountPer100g == null) return '—'
-  return (amountPer100g * grams / 100).toFixed(1)
+  return `${(amountPer100g * grams / 100).toFixed(1)} ${unit}`
 }
 
 export default function PlanPage() {
@@ -67,7 +68,7 @@ function PlanContent() {
             <tr>
               <th className="px-3 py-2">Food</th>
               <th className="px-3 py-2">Nutrient</th>
-              <th className="px-3 py-2 text-right">Amount</th>
+              <th className="px-3 py-2 text-right">Suggested portion</th>
               <th className="px-3 py-2 text-right">Nutrient gained</th>
               <th className="px-3 py-2">Best cooking method</th>
               <th className="px-3 py-2">Combine with</th>
@@ -80,7 +81,7 @@ function PlanContent() {
                 <td className="px-3 py-3 text-gray-600">{f.nutrientName}</td>
                 <td className="px-3 py-3 text-right text-gray-700">{f.suggestedGrams} g</td>
                 <td className="px-3 py-3 text-right text-gray-700">
-                  <div>{nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams)}</div>
+                  <div>{nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams, f.unit)}</div>
                   <div className="text-xs text-gray-400">
                     {f.amountCooked != null ? (f.cookedIsEstimated ? 'cooked est.' : 'cooked') : 'raw'}
                   </div>
@@ -106,10 +107,10 @@ function PlanContent() {
             <div className="font-medium text-sm text-gray-900">{f.food.name}</div>
             <div className="text-xs text-gray-400 mt-0.5">{f.nutrientName}</div>
             <div className="mt-2 text-xs text-gray-600 space-y-1">
-              <div>Amount: <span className="font-medium text-gray-800">{f.suggestedGrams} g</span></div>
+              <div>Suggested portion: <span className="font-medium text-gray-800">{f.suggestedGrams} g</span></div>
               <div>
                 Nutrient gained: <span className="font-medium text-gray-800">
-                  {nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams)}
+                  {nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams, f.unit)}
                 </span>
                 <span className="text-gray-400 ml-1">
                   ({f.amountCooked != null ? (f.cookedIsEstimated ? 'cooked est.' : 'cooked') : 'raw'})
@@ -135,10 +136,11 @@ function PlanContent() {
         <Link href="/" className="text-sm text-gray-400 hover:text-gray-600">Start over</Link>
       </div>
 
-      <p className="mt-6 text-xs text-gray-400 leading-relaxed">
-        Amounts are a planning guide, not a prescription. Suggested portions aim for ~25% of RDI per food.
-        Consult a registered dietitian for personalised advice, especially if you have a medical condition.
-      </p>
+      <div className="mt-6 text-xs text-gray-400 leading-relaxed space-y-1">
+        <p><span className="font-medium text-gray-500">Suggested portion:</span> calculated to provide ~25% of your daily RDI from this one food, capped between 50–300 g to stay within realistic serving sizes.</p>
+        <p><span className="font-medium text-gray-500">Nutrient gained:</span> amount of the nutrient in that portion, using cooked values where available (marked "est." when estimated from retention factors rather than measured).</p>
+        <p>This is a planning guide, not a prescription. Consult a registered dietitian for personalised advice, especially if you have a medical condition.</p>
+      </div>
     </div>
   )
 }

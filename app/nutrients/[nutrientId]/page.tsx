@@ -55,6 +55,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
         food: r.food,
         nutrientId: Number(nutrientId),
         nutrientName: data.nutrient?.name ?? nutrientName,
+        unit: data.dri?.unit ?? '',
         amountRaw: r.amount_raw,
         amountCooked: r.amount_cooked,
         cookedIsEstimated: r.cooked_is_estimated,
