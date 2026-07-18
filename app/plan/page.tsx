@@ -14,6 +14,7 @@ type SelectedFood = {
   cookedIsEstimated: boolean
   bestPrepMethod: string
   enhancers: { compound: string; effect: string }[]
+  inhibitors: { compound: string; effect: string }[]
   suggestedGrams: number
 }
 
@@ -72,6 +73,7 @@ function PlanContent() {
               <th className="px-3 py-2 text-right">Nutrient gained</th>
               <th className="px-3 py-2">Best cooking method</th>
               <th className="px-3 py-2">Combine with</th>
+              <th className="px-3 py-2">Avoid with</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -91,6 +93,13 @@ function PlanContent() {
                   {f.enhancers.length > 0
                     ? f.enhancers.map(e => (
                         <div key={e.compound} className="text-green-700">+ {e.compound}</div>
+                      ))
+                    : '—'}
+                </td>
+                <td className="px-3 py-3 text-xs text-gray-600">
+                  {f.inhibitors.length > 0
+                    ? f.inhibitors.map(e => (
+                        <div key={e.compound} className="text-red-600">− {e.compound}</div>
                       ))
                     : '—'}
                 </td>
@@ -119,6 +128,9 @@ function PlanContent() {
               <div>Prep: {f.bestPrepMethod}</div>
               {f.enhancers.length > 0 && (
                 <div className="text-green-700">+ Combine with: {f.enhancers.map(e => e.compound).join(', ')}</div>
+              )}
+              {f.inhibitors.length > 0 && (
+                <div className="text-red-600">− Avoid with: {f.inhibitors.map(e => e.compound).join(', ')}</div>
               )}
             </div>
           </div>

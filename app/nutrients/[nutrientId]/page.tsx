@@ -61,6 +61,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
         cookedIsEstimated: r.cooked_is_estimated,
         bestPrepMethod: r.best_prep_method,
         enhancers: r.absorption_enhancers,
+        inhibitors: r.absorption_inhibitors,
         suggestedGrams: r.suggested_grams,
       }))
 

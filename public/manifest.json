@@ -1,6 +1,6 @@
 {
-  "name": "Nutrient Prep Planner",
-  "short_name": "NutriPlanner",
+  "name": "Nutrition Planner",
+  "short_name": "Nutrition Planner",
   "description": "Plan meals around the nutrients your goal needs — with the science made explicit.",
   "start_url": "/",
   "display": "standalone",
