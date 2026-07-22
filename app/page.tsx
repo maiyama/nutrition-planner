@@ -1,39 +1,28 @@
-'use client'
+import Link from 'next/link'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-
-export default function Home() {
-  const [goal, setGoal] = useState('')
-  const router = useRouter()
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (goal.trim()) router.push(`/goal?q=${encodeURIComponent(goal.trim())}`)
-  }
-
+export default function LandingPage() {
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">What's your health goal?</h1>
-      <p className="text-gray-500 mb-6 text-sm">
-        Describe what you're trying to achieve. We'll map it to the nutrients that matter and show you how to get them from food.
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Where do you want to start?</h1>
+      <p className="text-gray-500 mb-8 text-sm">
+        Understand what your body needs — mapped to real food, with the science made explicit.
       </p>
-      <form onSubmit={handleSubmit}>
-        <textarea
-          value={goal}
-          onChange={e => setGoal(e.target.value)}
-          rows={4}
-          placeholder="e.g. lose weight while keeping muscle, improve energy levels, support bone health..."
-          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-600 resize-none"
-        />
-        <button
-          type="submit"
-          disabled={!goal.trim()}
-          className="mt-3 w-full bg-green-700 hover:bg-green-800 disabled:bg-gray-300 text-white font-medium py-2.5 rounded-lg transition-colors"
+      <div className="space-y-3">
+        <Link
+          href="/enter-goal"
+          className="block border border-gray-200 rounded-xl px-6 py-5 bg-white hover:border-green-500 hover:shadow-sm transition-all"
         >
-          Show relevant nutrients
-        </button>
-      </form>
+          <div className="font-semibold text-gray-900 mb-1">I have a health goal</div>
+          <p className="text-sm text-gray-500">e.g. lose weight, improve energy, support bone health</p>
+        </Link>
+        <Link
+          href="/food"
+          className="block border border-gray-200 rounded-xl px-6 py-5 bg-white hover:border-green-500 hover:shadow-sm transition-all"
+        >
+          <div className="font-semibold text-gray-900 mb-1">I have a food in mind</div>
+          <p className="text-sm text-gray-500">e.g. Swiss chard, salmon, lentils — see what nutrients it contains</p>
+        </Link>
+      </div>
     </div>
   )
 }

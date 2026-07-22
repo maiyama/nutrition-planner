@@ -50,7 +50,7 @@ function GoalContent() {
   if (!goal.trim()) {
     return (
       <p className="text-gray-500 text-sm">
-        No goal entered. <Link href="/" className="text-green-700 underline">Go back</Link>
+        No goal entered. <Link href="/enter-goal" className="text-green-700 underline">Go back</Link>
       </p>
     )
   }
@@ -107,7 +107,7 @@ function GoalContent() {
       )}
 
       <div className="mt-8 pt-6 border-t border-gray-100">
-        <Link href="/" className="text-sm text-gray-400 hover:text-gray-600">← Change goal</Link>
+        <Link href="/enter-goal" className="text-sm text-gray-400 hover:text-gray-600">← Change goal</Link>
       </div>
     </div>
   )
