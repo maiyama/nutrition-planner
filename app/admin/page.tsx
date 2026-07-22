@@ -124,6 +124,101 @@ function FdcLoader() {
   )
 }
 
+// ── SR Legacy Loader ───────────────────────────────────────────────────────
+
+type SrPageResult = {
+  pageNumber: number; foodsChecked: number; foodsLoaded: number
+  nutrientsLoaded: number; errors: string[]; hasMore: boolean
+}
+
+function SrLegacyLoader() {
+  const [loading, setLoading] = useState(false)
+  const [pages, setPages] = useState<SrPageResult[]>([])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [done, setDone] = useState(false)
+
+  const totalFoods = pages.reduce((s, p) => s + p.foodsLoaded, 0)
+  const totalNutrients = pages.reduce((s, p) => s + p.nutrientsLoaded, 0)
+  const totalErrors = pages.reduce((s, p) => s + p.errors.length, 0)
+
+  async function loadAll() {
+    setLoading(true); setPages([]); setDone(false)
+    let page = 1
+    while (true) {
+      setCurrentPage(page)
+      try {
+        const res = await fetch('/api/admin/load-sr-legacy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pageNumber: page }),
+        })
+        const data: SrPageResult = await res.json()
+        setPages(prev => [...prev, data])
+        if (!data.hasMore) break
+        page++
+      } catch (e) {
+        setPages(prev => [...prev, { pageNumber: page, foodsChecked: 0, foodsLoaded: 0, nutrientsLoaded: 0, errors: [String(e)], hasMore: false }])
+        break
+      }
+    }
+    setDone(true); setLoading(false)
+  }
+
+  return (
+    <div className="mt-8 pt-8 border-t border-gray-200">
+      <h3 className="text-sm font-semibold text-gray-800 mb-1">SR Legacy dataset</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        USDA SR Legacy (~7,800 foods, 2018). Loads whole-food categories only — Vegetables, Fruits, Meat, Seafood, Dairy, Legumes, Grains, Nuts & Seeds, Spices, Fats & Oils.
+        Foundation Foods already in the DB are not replaced. Safe to re-run.
+      </p>
+      <button
+        onClick={loadAll}
+        disabled={loading}
+        className="bg-green-700 hover:bg-green-800 disabled:bg-gray-400 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+      >
+        {loading ? `Loading page ${currentPage}…` : done ? 'Re-run SR Legacy' : 'Load SR Legacy data'}
+      </button>
+      {pages.length > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            {loading
+              ? `Page ${currentPage} in progress — ${totalFoods} foods, ${totalNutrients} nutrients so far`
+              : `Done — ${totalFoods} foods, ${totalNutrients} nutrients loaded across ${pages.length} pages${totalErrors > 0 ? ` · ${totalErrors} errors` : ''}`}
+          </p>
+          <div className="max-h-64 overflow-y-auto">
+            <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+              <thead className="bg-gray-50 text-left text-xs text-gray-500 sticky top-0">
+                <tr>
+                  <th className="px-3 py-2">Page</th>
+                  <th className="px-3 py-2 text-right">Checked</th>
+                  <th className="px-3 py-2 text-right">Foods</th>
+                  <th className="px-3 py-2 text-right">Nutrients</th>
+                  <th className="px-3 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {pages.map(p => (
+                  <tr key={p.pageNumber}>
+                    <td className="px-3 py-1.5 text-gray-600">{p.pageNumber}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-500">{p.foodsChecked}</td>
+                    <td className="px-3 py-1.5 text-right">{p.foodsLoaded}</td>
+                    <td className="px-3 py-1.5 text-right">{p.nutrientsLoaded}</td>
+                    <td className="px-3 py-1.5 text-xs">
+                      {p.errors.length > 0
+                        ? <span className="text-amber-600">{p.errors[0]}</span>
+                        : <span className="text-green-700">OK</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Absorption Rules ───────────────────────────────────────────────────────
 
 type NewRule = { nutrient_id: string; rule_type: 'enhancer' | 'inhibitor'; compound: string; effect: string; rationale: string; source_url: string }
@@ -382,7 +477,7 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {tab === 'FDC Data' && <FdcLoader />}
+      {tab === 'FDC Data' && <><FdcLoader /><SrLegacyLoader /></>}
       {tab === 'Absorption Rules' && <AbsorptionRulesEditor nutrients={nutrients} />}
       {tab === 'Stability Flags' && <StabilityEditor nutrients={nutrients} />}
     </div>
