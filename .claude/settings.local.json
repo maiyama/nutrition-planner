@@ -14,7 +14,12 @@
       "Bash(curl *)",
       "Bash(git push *)",
       "Bash(python3 -m json.tool)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "WebFetch(domain:www.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:pubmed.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:www.canada.ca)",
+      "WebFetch(domain:ods.od.nih.gov)",
+      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)"
     ]
   }
 }
