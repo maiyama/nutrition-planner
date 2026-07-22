@@ -2,6 +2,22 @@
 
 import { useEffect, useState, use } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
+
+// Vitamins only — keyed by nutrient DB id → PubChem compound name for image lookup
+const MOLECULE_COMPOUNDS: Record<number, string> = {
+  1:  'thiamine',
+  2:  'riboflavin',
+  3:  'pyridoxine',
+  4:  'ascorbic acid',
+  5:  'retinol',
+  6:  'cholecalciferol',
+  7:  'alpha-tocopherol',
+  8:  'phylloquinone',
+  13: 'cyanocobalamin',
+  14: 'niacin',
+  15: 'folic acid',
+}
 
 type FoodRow = {
   food: { id: number; name: string; food_group: string | null }
@@ -32,6 +48,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [showMolecule, setShowMolecule] = useState(false)
 
   useEffect(() => {
     fetch(`/api/foods?nutrientId=${nutrientId}`)
@@ -80,16 +97,62 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
       <p className="text-xs text-gray-400 mb-1">
         <a href={`/goal?q=${encodeURIComponent(goal)}`} className="hover:underline">← Back to nutrients</a>
       </p>
-      <h2 className="text-lg font-semibold text-gray-900 mb-0.5">
-        {nutrient?.name ?? nutrientName}
-        {nutrient?.vitamer_form && <span className="ml-2 text-sm text-gray-400 font-normal">{nutrient.vitamer_form}</span>}
-      </h2>
+
+      <div className="flex items-start justify-between gap-4 mb-0.5">
+        <h2 className="text-lg font-semibold text-gray-900">
+          {nutrient?.name ?? nutrientName}
+          {nutrient?.vitamer_form && <span className="ml-2 text-sm text-gray-400 font-normal">{nutrient.vitamer_form}</span>}
+        </h2>
+        {nutrient && MOLECULE_COMPOUNDS[nutrient.id] && (
+          <button
+            onClick={() => setShowMolecule(true)}
+            className="shrink-0 text-xs border border-green-600 text-green-700 hover:bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Show me the molecule
+          </button>
+        )}
+      </div>
+
       {dri && (
         <p className="text-xs text-gray-500 mb-1">
           RDI: {dri.rda_or_ai} {dri.unit}/day (Health Canada, adults 19–50) · Solubility: {nutrient?.solubility ?? '—'}
         </p>
       )}
       <p className="text-xs text-gray-400 mb-5">Select one or more foods to add to your plan.</p>
+
+      {/* Molecule overlay */}
+      {showMolecule && nutrient && MOLECULE_COMPOUNDS[nutrient.id] && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowMolecule(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="font-semibold text-gray-900">{nutrient.name}</p>
+                {nutrient.vitamer_form && <p className="text-xs text-gray-400">{nutrient.vitamer_form}</p>}
+              </div>
+              <button onClick={() => setShowMolecule(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+            </div>
+            <div className="flex justify-center bg-gray-50 rounded-lg p-4">
+              <Image
+                src={`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(MOLECULE_COMPOUNDS[nutrient.id])}/PNG?image_size=300x300`}
+                alt={`${nutrient.name} molecule structure`}
+                width={300}
+                height={300}
+                className="object-contain"
+                unoptimized
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-3 text-center">
+              Structure via <a href="https://pubchem.ncbi.nlm.nih.gov" target="_blank" rel="noopener noreferrer" className="underline">PubChem</a>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
