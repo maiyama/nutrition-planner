@@ -223,7 +223,9 @@ function AbsorptionRulesEditor({ nutrients }: { nutrients: Nutrient[] }) {
                 <td className="px-3 py-2 text-gray-800 font-medium">{rule.compound}</td>
                 <td className="px-3 py-2 text-gray-600 max-w-[200px]">{rule.effect}</td>
                 <td className="px-3 py-2">
-                  <a href={rule.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 underline truncate block max-w-[120px]">link</a>
+                  {rule.source_url
+                    ? <a href={rule.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 underline">link</a>
+                    : <span className="text-xs text-red-500 font-medium">missing</span>}
                 </td>
                 <td className="px-3 py-2 flex gap-2">
                   <button onClick={() => { setEditingId(rule.id); setEditDraft({ ...rule }); setEditNote('') }} className="text-xs text-blue-600 hover:underline">Edit</button>
