@@ -12,15 +12,18 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-forest:   #1a4731;
+  --color-fern:     #2d6a4f;
+  --color-sage:     #52b788;
+  --color-mint:     #d8f3dc;
+  --color-sun:      #ffd166;
+  --color-sun-50:   #fff8e1;
+  --color-coral:    #ef476f;
+  --color-blush:    #fce4ec;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #171717;
 }

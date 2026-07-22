@@ -45,9 +45,9 @@ function PlanContent() {
   if (foods.length === 0) {
     return (
       <div className="max-w-xl">
-        <h1 className="text-xl font-bold text-gray-900 mb-3">Your prep plan</h1>
+        <h1 className="text-xl font-bold text-forest mb-3">Your prep plan</h1>
         <p className="text-sm text-gray-500 mb-4">No foods selected yet.</p>
-        <Link href={`/goal?q=${encodeURIComponent(goal)}`} className="text-sm text-green-700 underline">← Back to nutrients</Link>
+        <Link href={`/goal?q=${encodeURIComponent(goal)}`} className="text-sm text-fern underline">← Back to nutrients</Link>
       </div>
     )
   }
@@ -56,30 +56,30 @@ function PlanContent() {
     <div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Your prep plan</h1>
-          <p className="text-xs text-gray-400">Goal: "{goal}"</p>
+          <h1 className="text-xl font-bold text-forest mb-1">Your prep plan</h1>
+          <p className="text-xs text-gray-400">Goal: &ldquo;{goal}&rdquo;</p>
         </div>
-        <button onClick={clearPlan} className="text-xs text-gray-400 hover:text-red-500 transition-colors">Clear plan</button>
+        <button onClick={clearPlan} className="text-xs text-gray-400 hover:text-coral transition-colors">Clear plan</button>
       </div>
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-          <thead className="bg-gray-50 text-xs text-gray-500 text-left">
+        <table className="w-full text-sm border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+          <thead className="bg-mint text-xs text-fern font-semibold text-left">
             <tr>
-              <th className="px-3 py-2">Food</th>
-              <th className="px-3 py-2">Nutrient</th>
-              <th className="px-3 py-2 text-right">Suggested portion</th>
-              <th className="px-3 py-2 text-right">Nutrient gained</th>
-              <th className="px-3 py-2">Best cooking method</th>
-              <th className="px-3 py-2">Combine with</th>
-              <th className="px-3 py-2">Avoid with</th>
+              <th className="px-3 py-2.5">Food</th>
+              <th className="px-3 py-2.5">Nutrient</th>
+              <th className="px-3 py-2.5 text-right">Suggested portion</th>
+              <th className="px-3 py-2.5 text-right">Nutrient gained</th>
+              <th className="px-3 py-2.5">Best cooking method</th>
+              <th className="px-3 py-2.5">Combine with</th>
+              <th className="px-3 py-2.5">Avoid with</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-50">
             {foods.map((f, i) => (
-              <tr key={i} className="align-top">
-                <td className="px-3 py-3 font-medium text-gray-800">{f.food.name}</td>
+              <tr key={i} className="align-top hover:bg-gray-50 transition-colors">
+                <td className="px-3 py-3 font-medium text-forest">{f.food.name}</td>
                 <td className="px-3 py-3 text-gray-600">{f.nutrientName}</td>
                 <td className="px-3 py-3 text-right text-gray-700">{f.suggestedGrams} g</td>
                 <td className="px-3 py-3 text-right text-gray-700">
@@ -89,19 +89,15 @@ function PlanContent() {
                   </div>
                 </td>
                 <td className="px-3 py-3 text-xs text-gray-600 max-w-[220px]">{f.bestPrepMethod}</td>
-                <td className="px-3 py-3 text-xs text-gray-600">
+                <td className="px-3 py-3 text-xs text-fern">
                   {f.enhancers.length > 0
-                    ? f.enhancers.map(e => (
-                        <div key={e.compound} className="text-green-700">+ {e.compound}</div>
-                      ))
-                    : '—'}
+                    ? f.enhancers.map(e => <div key={e.compound}>+ {e.compound}</div>)
+                    : <span className="text-gray-300">—</span>}
                 </td>
-                <td className="px-3 py-3 text-xs text-gray-600">
+                <td className="px-3 py-3 text-xs text-coral">
                   {f.inhibitors.length > 0
-                    ? f.inhibitors.map(e => (
-                        <div key={e.compound} className="text-red-600">− {e.compound}</div>
-                      ))
-                    : '—'}
+                    ? f.inhibitors.map(e => <div key={e.compound}>− {e.compound}</div>)
+                    : <span className="text-gray-300">—</span>}
                 </td>
               </tr>
             ))}
@@ -112,13 +108,13 @@ function PlanContent() {
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
         {foods.map((f, i) => (
-          <div key={i} className="border border-gray-200 rounded-lg px-4 py-3 bg-white">
-            <div className="font-medium text-sm text-gray-900">{f.food.name}</div>
+          <div key={i} className="border border-gray-100 rounded-xl px-4 py-3 bg-white shadow-sm">
+            <div className="font-semibold text-sm text-forest">{f.food.name}</div>
             <div className="text-xs text-gray-400 mt-0.5">{f.nutrientName}</div>
             <div className="mt-2 text-xs text-gray-600 space-y-1">
-              <div>Suggested portion: <span className="font-medium text-gray-800">{f.suggestedGrams} g</span></div>
+              <div>Suggested portion: <span className="font-medium text-forest">{f.suggestedGrams} g</span></div>
               <div>
-                Nutrient gained: <span className="font-medium text-gray-800">
+                Nutrient gained: <span className="font-medium text-forest">
                   {nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams, f.unit)}
                 </span>
                 <span className="text-gray-400 ml-1">
@@ -127,10 +123,10 @@ function PlanContent() {
               </div>
               <div>Prep: {f.bestPrepMethod}</div>
               {f.enhancers.length > 0 && (
-                <div className="text-green-700">+ Combine with: {f.enhancers.map(e => e.compound).join(', ')}</div>
+                <div className="text-fern">+ Combine with: {f.enhancers.map(e => e.compound).join(', ')}</div>
               )}
               {f.inhibitors.length > 0 && (
-                <div className="text-red-600">− Avoid with: {f.inhibitors.map(e => e.compound).join(', ')}</div>
+                <div className="text-coral">− Avoid with: {f.inhibitors.map(e => e.compound).join(', ')}</div>
               )}
             </div>
           </div>
@@ -138,19 +134,16 @@ function PlanContent() {
       </div>
 
       <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap gap-4 items-center">
-        <Link
-          href={`/goal?q=${encodeURIComponent(goal)}`}
-          className="text-sm text-green-700 underline"
-        >
+        <Link href={`/goal?q=${encodeURIComponent(goal)}`} className="text-sm text-fern underline">
           ← Add more nutrients
         </Link>
         <span className="text-gray-200">|</span>
-        <Link href="/" className="text-sm text-gray-400 hover:text-gray-600">Start over</Link>
+        <Link href="/" className="text-sm text-gray-400 hover:text-fern transition-colors">Start over</Link>
       </div>
 
       <div className="mt-6 text-xs text-gray-400 leading-relaxed space-y-1">
         <p><span className="font-medium text-gray-500">Suggested portion:</span> calculated to provide ~25% of your daily RDI from this one food, capped between 50–300 g to stay within realistic serving sizes.</p>
-        <p><span className="font-medium text-gray-500">Nutrient gained:</span> amount of the nutrient in that portion, using cooked values where available (marked "est." when estimated from retention factors rather than measured).</p>
+        <p><span className="font-medium text-gray-500">Nutrient gained:</span> amount of the nutrient in that portion, using cooked values where available (marked &ldquo;est.&rdquo; when estimated from retention factors rather than measured).</p>
         <p>This is a planning guide, not a prescription. Consult a registered dietitian for personalised advice, especially if you have a medical condition.</p>
       </div>
     </div>

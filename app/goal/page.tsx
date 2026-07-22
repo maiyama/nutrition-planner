@@ -50,7 +50,7 @@ function GoalContent() {
   if (!goal.trim()) {
     return (
       <p className="text-gray-500 text-sm">
-        No goal entered. <Link href="/enter-goal" className="text-green-700 underline">Go back</Link>
+        No goal entered. <Link href="/enter-goal" className="text-fern underline">Go back</Link>
       </p>
     )
   }
@@ -61,45 +61,47 @@ function GoalContent() {
   return (
     <div className="max-w-2xl">
       <p className="text-xs text-gray-400 mb-1">Your goal</p>
-      <p className="text-gray-800 font-medium mb-6">"{goal}"</p>
+      <p className="text-gray-800 font-medium mb-6">&ldquo;{goal}&rdquo;</p>
 
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Relevant nutrients</h2>
+      <h2 className="text-lg font-semibold text-forest mb-1">Relevant nutrients</h2>
       <p className="text-sm text-gray-500 mb-5">
         Select a nutrient to see which foods are highest in it and how to prepare them.
       </p>
 
       {nutrients.length === 0 ? (
         <p className="text-sm text-gray-500">
-          No nutrients matched your goal. Try rephrasing — e.g. "improve energy", "support bone health", or "lose weight".
+          No nutrients matched your goal. Try rephrasing — e.g. &ldquo;improve energy&rdquo;, &ldquo;support bone health&rdquo;, or &ldquo;lose weight&rdquo;.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {nutrients.map(ng => (
             <Link
               key={ng.nutrient_id}
               href={`/nutrients/${ng.nutrient_id}?goal=${encodeURIComponent(goal)}&nutrientName=${encodeURIComponent(ng.nutrient.name)}`}
-              className="block border border-gray-200 rounded-lg px-4 py-4 bg-white hover:border-green-500 hover:shadow-sm transition-all"
+              className="block border border-gray-100 rounded-xl px-5 py-4 bg-white hover:border-sage hover:shadow-sm transition-all"
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="font-medium text-gray-900 text-sm">
+                  <div className="font-semibold text-forest text-sm">
                     {ng.nutrient.name}
                     {ng.nutrient.vitamer_form && (
                       <span className="ml-2 text-xs text-gray-400 font-normal">{ng.nutrient.vitamer_form}</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-600 mt-1 leading-relaxed">{ng.rationale_text}</p>
-                  <a
-                    href={ng.source_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="text-xs text-green-700 underline mt-1 inline-block"
-                  >
-                    Source ({ng.source_type.replace('_', ' ')})
-                  </a>
+                  {ng.source_url && (
+                    <a
+                      href={ng.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-xs text-fern underline mt-1 inline-block"
+                    >
+                      Source ({ng.source_type.replace('_', ' ')})
+                    </a>
+                  )}
                 </div>
-                <span className="text-gray-300 text-lg mt-0.5 shrink-0">→</span>
+                <span className="text-sage text-lg mt-0.5 shrink-0">→</span>
               </div>
             </Link>
           ))}
@@ -107,7 +109,7 @@ function GoalContent() {
       )}
 
       <div className="mt-8 pt-6 border-t border-gray-100">
-        <Link href="/enter-goal" className="text-sm text-gray-400 hover:text-gray-600">← Change goal</Link>
+        <Link href="/enter-goal" className="text-sm text-gray-400 hover:text-fern transition-colors">← Change goal</Link>
       </div>
     </div>
   )

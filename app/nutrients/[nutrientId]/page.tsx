@@ -99,14 +99,14 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
       </p>
 
       <div className="flex items-start justify-between gap-4 mb-0.5">
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-lg font-bold text-forest">
           {nutrient?.name ?? nutrientName}
           {nutrient?.vitamer_form && <span className="ml-2 text-sm text-gray-400 font-normal">{nutrient.vitamer_form}</span>}
         </h2>
         {nutrient && MOLECULE_COMPOUNDS[nutrient.id] && (
           <button
             onClick={() => setShowMolecule(true)}
-            className="shrink-0 text-xs border border-green-600 text-green-700 hover:bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
+            className="shrink-0 text-xs border border-sage text-fern hover:bg-mint px-3 py-1.5 rounded-lg transition-colors"
           >
             Show me the molecule
           </button>
@@ -156,8 +156,8 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-          <thead className="bg-gray-50 text-left text-xs text-gray-500">
+        <table className="w-full text-sm border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+          <thead className="bg-mint text-left text-xs text-fern font-semibold">
             <tr>
               <th className="px-3 py-2 w-6"></th>
               <th className="px-3 py-2">Food</th>
@@ -173,10 +173,10 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
               <tr
                 key={row.food.id}
                 onClick={() => toggleSelect(row.food.id)}
-                className={`cursor-pointer transition-colors ${selected.has(row.food.id) ? 'bg-green-50' : 'hover:bg-gray-50'}`}
+                className={`cursor-pointer transition-colors ${selected.has(row.food.id) ? 'bg-sun-50' : 'hover:bg-gray-50'}`}
               >
                 <td className="px-3 py-2">
-                  <input type="checkbox" readOnly checked={selected.has(row.food.id)} className="accent-green-700" />
+                  <input type="checkbox" readOnly checked={selected.has(row.food.id)} className="accent-forest" />
                 </td>
                 <td className="px-3 py-2 font-medium text-gray-800">{row.food.name}</td>
                 <td className="px-3 py-2 text-right text-gray-700">
@@ -189,7 +189,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
                 </td>
                 <td className="px-3 py-2 text-right">
                   {row.pct_rdi != null
-                    ? <span className={row.pct_rdi >= 25 ? 'text-green-700 font-medium' : 'text-gray-600'}>{row.pct_rdi}%</span>
+                    ? <span className={row.pct_rdi >= 25 ? 'text-forest font-semibold' : row.pct_rdi >= 10 ? 'text-fern' : 'text-gray-500'}>{row.pct_rdi}%</span>
                     : '—'}
                 </td>
                 <td className="px-3 py-2 text-gray-600 text-xs max-w-[200px]">{row.best_prep_method}</td>
@@ -210,7 +210,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
           <div
             key={row.food.id}
             onClick={() => toggleSelect(row.food.id)}
-            className={`border rounded-lg px-4 py-3 cursor-pointer transition-colors ${selected.has(row.food.id) ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'}`}
+            className={`border rounded-xl px-4 py-3 cursor-pointer transition-colors ${selected.has(row.food.id) ? 'border-sun bg-sun-50' : 'border-gray-100 bg-white shadow-sm'}`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
                 <span className="font-medium text-sm text-gray-800">{row.food.name}</span>
               </div>
               {row.pct_rdi != null && (
-                <span className={`text-xs font-medium shrink-0 ${row.pct_rdi >= 25 ? 'text-green-700' : 'text-gray-500'}`}>{row.pct_rdi}% RDI</span>
+                <span className={`text-xs font-semibold shrink-0 ${row.pct_rdi >= 25 ? 'text-forest' : row.pct_rdi >= 10 ? 'text-fern' : 'text-gray-500'}`}>{row.pct_rdi}% RDI</span>
               )}
             </div>
             <div className="mt-2 text-xs text-gray-500 space-y-1 ml-5">
@@ -227,17 +227,17 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
             </div>
             <button
               onClick={e => { e.stopPropagation(); setExpanded(expanded === row.food.id ? null : row.food.id) }}
-              className="mt-2 ml-5 text-xs text-green-700 underline"
+              className="mt-2 ml-5 text-xs text-fern underline"
             >
               {expanded === row.food.id ? 'Hide' : 'Absorption details'}
             </button>
             {expanded === row.food.id && (
               <div className="mt-2 ml-5 text-xs space-y-1">
                 {row.absorption_enhancers.map(e => (
-                  <div key={e.compound} className="text-green-700">+ Combine with {e.compound}: {e.effect}</div>
+                  <div key={e.compound} className="text-fern">+ Combine with {e.compound}: {e.effect}</div>
                 ))}
                 {row.absorption_inhibitors.map(e => (
-                  <div key={e.compound} className="text-red-600">− Avoid {e.compound}: {e.effect}</div>
+                  <div key={e.compound} className="text-coral">− Avoid {e.compound}: {e.effect}</div>
                 ))}
               </div>
             )}
@@ -249,7 +249,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
         <button
           onClick={handleContinue}
           disabled={selected.size === 0}
-          className="bg-green-700 hover:bg-green-800 disabled:bg-gray-300 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
+          className="bg-forest hover:bg-fern disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
         >
           {selected.size === 0 ? 'Select foods to continue' : `Add ${selected.size} food${selected.size > 1 ? 's' : ''} to plan →`}
         </button>
