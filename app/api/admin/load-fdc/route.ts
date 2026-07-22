@@ -4,16 +4,23 @@ import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
 // FDC nutrient number → our Supabase nutrient row ID
 const FDC_TO_DB_NUTRIENT: Record<number, number> = {
   1003: 11, // Protein
+  1079: 19, // Fiber
   1087: 10, // Calcium
   1089: 9,  // Iron
   1090: 12, // Magnesium
+  1092: 16, // Potassium
+  1095: 17, // Zinc
+  1103: 18, // Selenium
   1106: 5,  // Vitamin A (RAE)
   1109: 7,  // Vitamin E
   1114: 6,  // Vitamin D
   1162: 4,  // Vitamin C
   1165: 1,  // Thiamine (B1)
   1166: 2,  // Riboflavin (B2)
+  1167: 14, // Niacin (B3)
   1175: 3,  // Vitamin B6
+  1177: 15, // Folate
+  1178: 13, // Vitamin B12
   1185: 8,  // Vitamin K
 }
 
