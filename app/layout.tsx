@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { cookies } from "next/headers";
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from "@/lib/admin-auth";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
@@ -19,7 +21,10 @@ function LeafIcon({ className }: { className?: string }) {
   )
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const isAdmin = verifySessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
+
   return (
     <html lang="en" className={`${geist.className} h-full`}>
       <head>
@@ -33,9 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <LeafIcon />
               Nutrition Planner
             </a>
-            <a href="/admin" className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 hover:border-gray-300 px-2.5 py-1 rounded-full transition-colors">
-              Admin
-            </a>
+            {isAdmin && (
+              <a href="/admin" className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 hover:border-gray-300 px-2.5 py-1 rounded-full transition-colors">
+                Admin
+              </a>
+            )}
           </div>
         </header>
         <main className="max-w-3xl mx-auto px-4 py-8">
