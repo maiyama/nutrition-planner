@@ -9,9 +9,9 @@ type SelectedFood = {
   nutrientId: number
   nutrientName: string
   unit: string
-  amountRaw: number | null
-  amountCooked: number | null
-  cookedIsEstimated: boolean
+  amount: number
+  state: 'raw' | 'cooked'
+  estimatedCooked: number | null
   bestPrepMethod: string
   enhancers: { compound: string; effect: string }[]
   inhibitors: { compound: string; effect: string }[]
@@ -21,6 +21,19 @@ type SelectedFood = {
 function nutrientAt(amountPer100g: number | null, grams: number, unit: string): string {
   if (amountPer100g == null) return '—'
   return `${(amountPer100g * grams / 100).toFixed(1)} ${unit}`
+}
+
+// A food entry is already raw or cooked (not both — they're separate USDA
+// records), so "cooked" here means either the food's own real value or,
+// for raw-only foods, a retention-factor estimate of what cooking would leave.
+function bestAmount(f: SelectedFood): number {
+  return f.state === 'cooked' ? f.amount : (f.estimatedCooked ?? f.amount)
+}
+
+function bestAmountLabel(f: SelectedFood): string {
+  if (f.state === 'cooked') return 'cooked'
+  if (f.estimatedCooked != null) return 'cooked est.'
+  return 'raw'
 }
 
 export default function PlanPage() {
@@ -83,10 +96,8 @@ function PlanContent() {
                 <td className="px-3 py-3 text-gray-600">{f.nutrientName}</td>
                 <td className="px-3 py-3 text-right text-gray-700">{f.suggestedGrams} g</td>
                 <td className="px-3 py-3 text-right text-gray-700">
-                  <div>{nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams, f.unit)}</div>
-                  <div className="text-xs text-gray-400">
-                    {f.amountCooked != null ? (f.cookedIsEstimated ? 'cooked est.' : 'cooked') : 'raw'}
-                  </div>
+                  <div>{nutrientAt(bestAmount(f), f.suggestedGrams, f.unit)}</div>
+                  <div className="text-xs text-gray-400">{bestAmountLabel(f)}</div>
                 </td>
                 <td className="px-3 py-3 text-xs text-gray-600 max-w-[220px]">{f.bestPrepMethod}</td>
                 <td className="px-3 py-3 text-xs text-fern">
@@ -115,11 +126,9 @@ function PlanContent() {
               <div>Suggested portion: <span className="font-medium text-forest">{f.suggestedGrams} g</span></div>
               <div>
                 Nutrient gained: <span className="font-medium text-forest">
-                  {nutrientAt(f.amountCooked ?? f.amountRaw, f.suggestedGrams, f.unit)}
+                  {nutrientAt(bestAmount(f), f.suggestedGrams, f.unit)}
                 </span>
-                <span className="text-gray-400 ml-1">
-                  ({f.amountCooked != null ? (f.cookedIsEstimated ? 'cooked est.' : 'cooked') : 'raw'})
-                </span>
+                <span className="text-gray-400 ml-1">({bestAmountLabel(f)})</span>
               </div>
               <div>Prep: {f.bestPrepMethod}</div>
               {f.enhancers.length > 0 && (

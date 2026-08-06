@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { isUnsafeRaw } from '@/lib/food-state'
 
 function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLight: boolean): string {
   if (solubility === 'fat') return 'Cook with a small amount of healthy fat (e.g. olive oil) to maximise absorption'
@@ -38,42 +39,37 @@ export async function GET(req: NextRequest) {
     .limit(1)
     .single()
 
-  // Get foods with raw amounts for this nutrient, sorted by amount desc
-  const { data: rawRows, error } = await supabase
+  // Get foods highest in this nutrient, across whatever state each food
+  // actually is (raw and cooked entries are separate foods, not two values
+  // of the same food — there's no single row that has both).
+  const { data: allRows, error } = await supabase
     .from('food_nutrients')
     .select('*, food:foods(*)')
     .eq('nutrient_id', nutrientId)
-    .eq('state', 'raw')
     .order('amount_per_100g', { ascending: false })
-    .limit(30)
+    .limit(200)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Get cooked amounts for same foods
-  const foodIds = (rawRows ?? []).map((r: Record<string, unknown>) => (r.food as Record<string, unknown>).id)
-  const { data: cookedRows } = await supabase
-    .from('food_nutrients')
-    .select('food_id, amount_per_100g')
-    .eq('nutrient_id', nutrientId)
-    .eq('state', 'cooked')
-    .in('food_id', foodIds)
+  const rows = (allRows ?? []).filter((r: Record<string, unknown>) => {
+    const food = r.food as Record<string, unknown>
+    return !isUnsafeRaw(food.name as string, food.food_group as string | null)
+  }).slice(0, 30)
 
-  const cookedMap: Record<number, number> = {}
-  for (const c of cookedRows ?? []) {
-    cookedMap[(c as Record<string, unknown>).food_id as number] = (c as Record<string, unknown>).amount_per_100g as number
-  }
-
-  // Get retention factors for this nutrient
+  // Retention factors for this nutrient, scoped per food group — best (highest) method per group.
   const { data: retentionRows } = await supabase
     .from('retention_factors')
     .select('*')
     .eq('nutrient_id', nutrientId)
 
-  // Best retention method: highest retention_pct
-  const bestRetention = (retentionRows ?? []).sort(
-    (a: Record<string, unknown>, b: Record<string, unknown>) =>
-      (b.retention_pct as number) - (a.retention_pct as number)
-  )[0] as Record<string, unknown> | undefined
+  const bestRetentionByGroup = new Map<string, Record<string, unknown>>()
+  for (const rf of (retentionRows ?? []) as Record<string, unknown>[]) {
+    const group = rf.food_group as string
+    const existing = bestRetentionByGroup.get(group)
+    if (!existing || (rf.retention_pct as number) > (existing.retention_pct as number)) {
+      bestRetentionByGroup.set(group, rf)
+    }
+  }
 
   // Get absorption rules
   const { data: absorptionRules } = await supabase
@@ -81,26 +77,28 @@ export async function GET(req: NextRequest) {
     .select('*')
     .eq('nutrient_id', nutrientId)
 
-  const prep = bestPrepMethod(nutrient?.solubility, nutrient?.stable_heat, nutrient?.stable_light)
-  const prepMethod = bestRetention
-    ? `${bestRetention.prep_method} (${bestRetention.retention_pct}% retention)`
-    : prep
+  const genericPrep = bestPrepMethod(nutrient?.solubility, nutrient?.stable_heat, nutrient?.stable_light)
 
-  const foods = (rawRows ?? []).map((r: Record<string, unknown>) => {
+  const foods = rows.map((r: Record<string, unknown>) => {
     const food = r.food as Record<string, unknown>
-    const raw = r.amount_per_100g as number
-    const cooked = cookedMap[food.id as number] ?? null
-    const cookedEstimated = cooked === null && bestRetention
-    const estimatedCooked = cookedEstimated && bestRetention
-      ? Math.round(raw * ((bestRetention.retention_pct as number) / 100) * 10) / 10
+    const amount = r.amount_per_100g as number
+    const state = r.state as 'raw' | 'cooked'
+    const retention = food.food_group ? bestRetentionByGroup.get(food.food_group as string) : undefined
+
+    const estimatedCooked = state === 'raw' && retention
+      ? Math.round(amount * ((retention.retention_pct as number) / 100) * 10) / 10
       : null
+
+    const prepMethod = retention
+      ? `${retention.prep_method} (${retention.retention_pct}% retention)`
+      : genericPrep
 
     return {
       food,
-      amount_raw: raw,
-      amount_cooked: cooked ?? estimatedCooked,
-      cooked_is_estimated: !cooked && !!estimatedCooked,
-      pct_rdi: dri ? Math.round((raw / dri.rda_or_ai) * 100) : null,
+      amount,
+      state,
+      estimated_cooked: estimatedCooked,
+      pct_rdi: dri ? Math.round((amount / dri.rda_or_ai) * 100) : null,
       best_prep_method: prepMethod,
       absorption_enhancers: (absorptionRules ?? [])
         .filter((rule: Record<string, unknown>) => rule.rule_type === 'enhancer')
@@ -108,7 +106,7 @@ export async function GET(req: NextRequest) {
       absorption_inhibitors: (absorptionRules ?? [])
         .filter((rule: Record<string, unknown>) => rule.rule_type === 'inhibitor')
         .map((rule: Record<string, unknown>) => ({ compound: rule.compound, effect: rule.effect, source_url: rule.source_url })),
-      suggested_grams: suggestedGrams(raw, dri?.rda_or_ai ?? null),
+      suggested_grams: suggestedGrams(amount, dri?.rda_or_ai ?? null),
     }
   })
 

@@ -21,9 +21,9 @@ const MOLECULE_COMPOUNDS: Record<number, string> = {
 
 type FoodRow = {
   food: { id: number; name: string; food_group: string | null }
-  amount_raw: number | null
-  amount_cooked: number | null
-  cooked_is_estimated: boolean
+  amount: number
+  state: 'raw' | 'cooked'
+  estimated_cooked: number | null
   pct_rdi: number | null
   best_prep_method: string
   suggested_grams: number
@@ -47,7 +47,6 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [expanded, setExpanded] = useState<number | null>(null)
   const [showMolecule, setShowMolecule] = useState(false)
 
   useEffect(() => {
@@ -73,9 +72,9 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
         nutrientId: Number(nutrientId),
         nutrientName: data.nutrient?.name ?? nutrientName,
         unit: data.dri?.unit ?? '',
-        amountRaw: r.amount_raw,
-        amountCooked: r.amount_cooked,
-        cookedIsEstimated: r.cooked_is_estimated,
+        amount: r.amount,
+        state: r.state,
+        estimatedCooked: r.estimated_cooked,
         bestPrepMethod: r.best_prep_method,
         enhancers: r.absorption_enhancers,
         inhibitors: r.absorption_inhibitors,
@@ -118,6 +117,20 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
           RDI: {dri.rda_or_ai} {dri.unit}/day (Health Canada, adults 19–50) · Solubility: {nutrient?.solubility ?? '—'}
         </p>
       )}
+
+      {/* Nutrient-level guidance — same regardless of which food you pick, so shown once here rather than per row */}
+      <div className="border border-sage/50 bg-mint/40 rounded-xl px-4 py-3 mb-4 text-xs text-gray-600 space-y-1">
+        <div><span className="font-semibold text-fern">Best prep:</span> {foods[0]?.best_prep_method}</div>
+        <div>
+          <span className="font-semibold text-fern">Combine with:</span>{' '}
+          {foods[0]?.absorption_enhancers.length ? foods[0].absorption_enhancers.map(e => e.compound).join(', ') : '—'}
+        </div>
+        <div>
+          <span className="font-semibold text-coral">Avoid with:</span>{' '}
+          {foods[0]?.absorption_inhibitors.length ? foods[0].absorption_inhibitors.map(e => e.compound).join(', ') : '—'}
+        </div>
+      </div>
+
       <p className="text-xs text-gray-400 mb-5">Select one or more foods to add to your plan.</p>
 
       {/* Molecule overlay */}
@@ -161,11 +174,8 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
             <tr>
               <th className="px-3 py-2 w-6"></th>
               <th className="px-3 py-2">Food</th>
-              <th className="px-3 py-2 text-right">Raw (per 100 g)</th>
-              <th className="px-3 py-2 text-right">Cooked (per 100 g)</th>
-              <th className="px-3 py-2 text-right">% RDI (raw)</th>
-              <th className="px-3 py-2">Best prep</th>
-              <th className="px-3 py-2">Combine with</th>
+              <th className="px-3 py-2 text-right">Amount (per 100 g)</th>
+              <th className="px-3 py-2 text-right">% RDI</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -180,22 +190,15 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
                 </td>
                 <td className="px-3 py-2 font-medium text-gray-800">{row.food.name}</td>
                 <td className="px-3 py-2 text-right text-gray-700">
-                  {row.amount_raw != null ? `${row.amount_raw} ${dri?.unit ?? ''}` : '—'}
-                </td>
-                <td className="px-3 py-2 text-right text-gray-700">
-                  {row.amount_cooked != null
-                    ? <>{row.amount_cooked} {dri?.unit ?? ''}{row.cooked_is_estimated && <span className="text-gray-400 text-xs"> est.</span>}</>
-                    : '—'}
+                  {row.amount} {dri?.unit ?? ''}
+                  <span className="ml-1 text-xs text-gray-400">({row.state})</span>
+                  {row.estimated_cooked != null && (
+                    <div className="text-xs text-gray-400">est. cooked: {row.estimated_cooked} {dri?.unit ?? ''}</div>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
                   {row.pct_rdi != null
                     ? <span className={row.pct_rdi >= 25 ? 'text-forest font-semibold' : row.pct_rdi >= 10 ? 'text-fern' : 'text-gray-500'}>{row.pct_rdi}%</span>
-                    : '—'}
-                </td>
-                <td className="px-3 py-2 text-gray-600 text-xs max-w-[200px]">{row.best_prep_method}</td>
-                <td className="px-3 py-2 text-xs text-gray-600">
-                  {row.absorption_enhancers.length > 0
-                    ? row.absorption_enhancers.map(e => e.compound).join(', ')
                     : '—'}
                 </td>
               </tr>
@@ -222,25 +225,11 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
               )}
             </div>
             <div className="mt-2 text-xs text-gray-500 space-y-1 ml-5">
-              <div>Raw: {row.amount_raw ?? '—'} {dri?.unit} · Cooked: {row.amount_cooked ?? '—'} {dri?.unit}{row.cooked_is_estimated ? ' (est.)' : ''}</div>
-              <div>Prep: {row.best_prep_method}</div>
-            </div>
-            <button
-              onClick={e => { e.stopPropagation(); setExpanded(expanded === row.food.id ? null : row.food.id) }}
-              className="mt-2 ml-5 text-xs text-fern underline"
-            >
-              {expanded === row.food.id ? 'Hide' : 'Absorption details'}
-            </button>
-            {expanded === row.food.id && (
-              <div className="mt-2 ml-5 text-xs space-y-1">
-                {row.absorption_enhancers.map(e => (
-                  <div key={e.compound} className="text-fern">+ Combine with {e.compound}: {e.effect}</div>
-                ))}
-                {row.absorption_inhibitors.map(e => (
-                  <div key={e.compound} className="text-coral">− Avoid {e.compound}: {e.effect}</div>
-                ))}
+              <div>
+                {row.amount} {dri?.unit} ({row.state})
+                {row.estimated_cooked != null && <> · est. cooked: {row.estimated_cooked} {dri?.unit}</>}
               </div>
-            )}
+            </div>
           </div>
         ))}
       </div>

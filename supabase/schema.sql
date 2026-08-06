@@ -46,7 +46,8 @@ create table retention_factors (
   food_group text not null,
   prep_method text not null,
   nutrient_id integer references nutrients(id) on delete cascade,
-  retention_pct numeric not null check (retention_pct between 0 and 100)
+  retention_pct numeric not null check (retention_pct between 0 and 100),
+  unique (food_group, prep_method, nutrient_id)
 );
 
 -- Absorption enhancers/inhibitors (with citations)

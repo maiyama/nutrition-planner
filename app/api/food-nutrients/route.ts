@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { deriveFoodState } from '@/lib/food-state'
+import { isUnsafeRaw } from '@/lib/food-state'
 
 function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLight: boolean): string {
   if (solubility === 'fat') return 'Cook with a small amount of healthy fat (e.g. olive oil) to maximise absorption'
@@ -12,10 +12,6 @@ function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLi
 // Food groups that aren't whole foods — extracted/isolated products sold as
 // supplements rather than something you'd cook or eat directly.
 const EXCLUDED_GROUPS = ['Supplements']
-
-// Land-animal meat groups are practically never eaten raw — hide raw-state
-// entries for these so users aren't offered "Chicken, raw" as a lookup result.
-const RAW_EXCLUDED_GROUPS = new Set(['Meat', 'Poultry'])
 
 // USDA food names are usually plural ("Blueberries, raw") while users often
 // search the singular ("blueberry"), and vice versa — plain substring
@@ -61,7 +57,7 @@ export async function GET(req: NextRequest) {
     const { data: rawMatches } = await query.order('name').limit(50)
 
     const matches = (rawMatches ?? []).filter((m: { name: string; food_group: string | null }) =>
-      !(m.food_group && RAW_EXCLUDED_GROUPS.has(m.food_group) && deriveFoodState(m.name, m.food_group) === 'raw')
+      !isUnsafeRaw(m.name, m.food_group)
     )
 
     if (matches.length === 0) {
