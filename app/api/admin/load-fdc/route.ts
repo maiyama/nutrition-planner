@@ -61,10 +61,13 @@ export async function POST(req: NextRequest) {
   const errors: string[] = []
 
   for (const food of foods) {
+    const description = food.description as string
+    const resolvedGroup = /^fish oil,/i.test(description) ? 'Supplements' : foodGroup
+
     const { data: foodRow, error: foodErr } = await supabase
       .from('foods')
       .upsert(
-        { fdc_id: food.fdcId, name: food.description, food_group: foodGroup },
+        { fdc_id: food.fdcId, name: description, food_group: resolvedGroup },
         { onConflict: 'fdc_id' }
       )
       .select('id')

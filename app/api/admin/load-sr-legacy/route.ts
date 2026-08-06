@@ -46,6 +46,13 @@ function ndbPrefix(ndbNumber: string): number {
   return Math.floor(parseInt(ndbNumber, 10) / 1000)
 }
 
+// Extracted/isolated products that share an NDB prefix with whole foods but
+// belong in Supplements instead (e.g. fish oil sits under Fats & Oils by prefix).
+function foodGroupOverride(description: string): string | null {
+  if (/^fish oil,/i.test(description)) return 'Supplements'
+  return null
+}
+
 const PAGE_SIZE = 200
 
 export async function POST(req: NextRequest) {
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
   const foodRows = filtered.map(f => ({
     fdc_id:     f.fdcId as number,
     name:       f.description as string,
-    food_group: NDB_PREFIX_TO_GROUP[ndbPrefix(String(f.ndbNumber))],
+    food_group: foodGroupOverride(f.description as string) ?? NDB_PREFIX_TO_GROUP[ndbPrefix(String(f.ndbNumber))],
   }))
 
   const { data: upsertedFoods, error: foodErr } = await supabase

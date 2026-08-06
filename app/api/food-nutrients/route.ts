@@ -8,43 +8,57 @@ function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLi
   return 'Steam or stir-fry to minimise leaching into cooking water; if boiling, use the liquid'
 }
 
+// Food groups that aren't whole foods — extracted/isolated products sold as
+// supplements rather than something you'd cook or eat directly.
+const EXCLUDED_GROUPS = ['Supplements']
+
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
+  const foodId = req.nextUrl.searchParams.get('foodId')
   const sex = req.nextUrl.searchParams.get('sex') ?? 'female'
 
-  if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
+  if (!name && !foodId) return NextResponse.json({ error: 'name or foodId required' }, { status: 400 })
 
-  // Search food by name — match all words case-insensitively
-  const words = name.split(/\s+/).filter(Boolean)
-  let query = supabase.from('foods').select('id, name, food_group')
-  for (const word of words) {
-    query = query.ilike('name', `%${word}%`)
+  let food: { id: number; name: string; food_group: string | null } | null = null
+
+  if (foodId) {
+    const { data } = await supabase.from('foods').select('id, name, food_group').eq('id', Number(foodId)).single()
+    food = data
+  } else {
+    // Search food by name — match all words case-insensitively
+    const words = (name as string).split(/\s+/).filter(Boolean)
+    let query = supabase.from('foods').select('id, name, food_group').not('food_group', 'in', `(${EXCLUDED_GROUPS.join(',')})`)
+    for (const word of words) {
+      query = query.ilike('name', `%${word}%`)
+    }
+    const { data: matches } = await query.order('name').limit(50)
+
+    if (!matches || matches.length === 0) {
+      return NextResponse.json({ food: null, matches: [], nutrients: [] })
+    }
+
+    // More than one candidate — let the user pick rather than guessing.
+    if (matches.length > 1) {
+      return NextResponse.json({ food: null, matches, nutrients: [] })
+    }
+
+    food = matches[0] as { id: number; name: string; food_group: string | null }
   }
-  const { data: matches } = await query.limit(5)
 
-  if (!matches || matches.length === 0) {
-    return NextResponse.json({ food: null, nutrients: [] })
-  }
+  if (!food) return NextResponse.json({ food: null, matches: [], nutrients: [] })
 
-  // Pick the match whose name is closest in length to the search term (most specific)
-  const food = matches.sort(
-    (a: { name: string }, b: { name: string }) =>
-      Math.abs(a.name.length - name.length) - Math.abs(b.name.length - name.length)
-  )[0] as { id: number; name: string; food_group: string | null }
-
-  // Get top 10 raw nutrient amounts for this food
-  const { data: fnRows, error } = await supabase
+  // Get all raw nutrient amounts for this food — we need every value present
+  // so we can rank by %RDI, not just whichever happen to have the largest raw amount.
+  const { data: allFnRows, error } = await supabase
     .from('food_nutrients')
     .select('nutrient_id, amount_per_100g')
     .eq('food_id', food.id)
     .eq('state', 'raw')
-    .order('amount_per_100g', { ascending: false })
-    .limit(10)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!fnRows || fnRows.length === 0) return NextResponse.json({ food, nutrients: [] })
+  if (!allFnRows || allFnRows.length === 0) return NextResponse.json({ food, nutrients: [] })
 
-  const nutrientIds = fnRows.map((r: { nutrient_id: number }) => r.nutrient_id)
+  const nutrientIds = allFnRows.map((r: { nutrient_id: number }) => r.nutrient_id)
 
   // Fetch nutrient details, DRI values, and absorption rules in parallel
   const [{ data: nutrientRows }, { data: driRows }, { data: absorptionRows }] = await Promise.all([
@@ -91,23 +105,27 @@ export async function GET(req: NextRequest) {
   }
 
   type FnRow = { nutrient_id: number; amount_per_100g: number }
-  const nutrients = (fnRows as FnRow[]).map(row => {
-    const nutrient = nutrientMap.get(row.nutrient_id)
-    const dri = driMap.get(row.nutrient_id)
-    return {
-      nutrient: nutrient
-        ? { id: nutrient.id, name: nutrient.name, solubility: nutrient.solubility, vitamer_form: nutrient.vitamer_form }
-        : { id: row.nutrient_id, name: `Nutrient #${row.nutrient_id}`, solubility: null, vitamer_form: null },
-      amount_per_100g: row.amount_per_100g,
-      unit: dri?.unit ?? '',
-      pct_rdi: dri ? Math.round((row.amount_per_100g / dri.rda_or_ai) * 100) : null,
-      best_prep_method: nutrient
-        ? bestPrepMethod(nutrient.solubility, nutrient.stable_heat, nutrient.stable_light)
-        : '—',
-      enhancers: enhancerMap.get(row.nutrient_id) ?? [],
-      inhibitors: inhibitorMap.get(row.nutrient_id) ?? [],
-    }
-  })
+  const nutrients = (allFnRows as FnRow[])
+    .map(row => {
+      const nutrient = nutrientMap.get(row.nutrient_id)
+      const dri = driMap.get(row.nutrient_id)
+      return {
+        nutrient: nutrient
+          ? { id: nutrient.id, name: nutrient.name, solubility: nutrient.solubility, vitamer_form: nutrient.vitamer_form }
+          : { id: row.nutrient_id, name: `Nutrient #${row.nutrient_id}`, solubility: null, vitamer_form: null },
+        amount_per_100g: row.amount_per_100g,
+        unit: dri?.unit ?? '',
+        pct_rdi: dri ? Math.round((row.amount_per_100g / dri.rda_or_ai) * 100) : null,
+        best_prep_method: nutrient
+          ? bestPrepMethod(nutrient.solubility, nutrient.stable_heat, nutrient.stable_light)
+          : '—',
+        enhancers: enhancerMap.get(row.nutrient_id) ?? [],
+        inhibitors: inhibitorMap.get(row.nutrient_id) ?? [],
+      }
+    })
+    // Rank by %RDI — nutrients without a DRI value (no pct_rdi) sort last.
+    .sort((a, b) => (b.pct_rdi ?? -1) - (a.pct_rdi ?? -1))
+    .slice(0, 10)
 
   return NextResponse.json({ food, nutrients })
 }

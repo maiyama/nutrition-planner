@@ -13,8 +13,11 @@ type NutrientRow = {
   inhibitors: { compound: string; effect: string }[]
 }
 
+type FoodMatch = { id: number; name: string; food_group: string | null }
+
 type ApiResponse = {
-  food: { id: number; name: string; food_group: string | null } | null
+  food: FoodMatch | null
+  matches?: FoodMatch[]
   nutrients: NutrientRow[]
   error?: string
 }
@@ -33,19 +36,55 @@ function FoodResultsContent() {
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [matches, setMatches] = useState<FoodMatch[] | null>(null)
 
   useEffect(() => {
+    setSelectedId(null)
+    setMatches(null)
     if (!name.trim()) { setLoading(false); return }
+    setLoading(true)
     fetch(`/api/food-nutrients?name=${encodeURIComponent(name)}`)
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
+      .then(d => { setData(d); if (d.matches?.length > 1) setMatches(d.matches); setLoading(false) })
   }, [name])
+
+  function selectFood(id: number) {
+    setSelectedId(id)
+    setLoading(true)
+    fetch(`/api/food-nutrients?foodId=${id}`)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false) })
+  }
 
   if (!name.trim()) {
     return <p className="text-sm text-gray-500">No food entered. <a href="/food" className="text-fern underline">Go back</a></p>
   }
 
   if (loading) return <p className="text-sm text-gray-400">Looking up &ldquo;{name}&rdquo;…</p>
+
+  // Multiple matches and nothing picked yet — let the user choose.
+  if (!selectedId && matches) {
+    return (
+      <div className="max-w-xl">
+        <p className="text-xs text-gray-400 mb-4"><a href="/food" className="hover:text-fern transition-colors">← Try another food</a></p>
+        <p className="text-forest font-semibold mb-3">{matches.length} matches for &ldquo;{name}&rdquo; — which one?</p>
+        <ul className="space-y-1.5">
+          {matches.map(m => (
+            <li key={m.id}>
+              <button
+                onClick={() => selectFood(m.id)}
+                className="w-full text-left border border-gray-100 rounded-xl px-4 py-2.5 bg-white shadow-sm hover:border-fern hover:bg-mint/40 transition-colors"
+              >
+                <span className="text-sm text-forest font-medium">{m.name}</span>
+                {m.food_group && <span className="ml-2 text-xs text-gray-400">{m.food_group}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
 
   if (!data?.food) {
     return (
@@ -60,7 +99,10 @@ function FoodResultsContent() {
   if (data.nutrients.length === 0) {
     return (
       <div className="max-w-xl">
-        <p className="text-xs text-gray-400 mb-4"><a href="/food" className="hover:text-fern transition-colors">← Try another food</a></p>
+        <p className="text-xs text-gray-400 mb-4">
+          {matches ? <button onClick={() => setSelectedId(null)} className="hover:text-fern transition-colors">← Back to matches</button>
+            : <a href="/food" className="hover:text-fern transition-colors">← Try another food</a>}
+        </p>
         <p className="text-forest font-semibold mb-1">{data.food.name}</p>
         <p className="text-sm text-gray-500 mt-2">No nutrient data loaded for this food yet. Run the FDC loader in Admin to populate it.</p>
       </div>
@@ -72,11 +114,12 @@ function FoodResultsContent() {
   return (
     <div>
       <p className="text-xs text-gray-400 mb-1">
-        <a href="/food" className="hover:text-fern transition-colors">← Look up another food</a>
+        {matches ? <button onClick={() => setSelectedId(null)} className="hover:text-fern transition-colors">← Back to matches</button>
+          : <a href="/food" className="hover:text-fern transition-colors">← Look up another food</a>}
       </p>
       <h2 className="text-lg font-bold text-forest mb-0.5">{food.name}</h2>
       {food.food_group && <p className="text-xs text-gray-400 mb-1">{food.food_group}</p>}
-      <p className="text-xs text-gray-500 mb-5">Top {nutrients.length} nutrients per 100 g (raw), ranked by amount.</p>
+      <p className="text-xs text-gray-500 mb-5">Top {nutrients.length} nutrients per 100 g (raw), ranked by % RDI.</p>
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">
