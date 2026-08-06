@@ -119,7 +119,7 @@ function FoodResultsContent() {
       </p>
       <h2 className="text-lg font-bold text-forest mb-0.5">{food.name}</h2>
       {food.food_group && <p className="text-xs text-gray-400 mb-1">{food.food_group}</p>}
-      <p className="text-xs text-gray-500 mb-5">Top {nutrients.length} nutrients per 100 g (raw), ranked by % RDI.</p>
+      <p className="text-xs text-gray-500 mb-5">Top {nutrients.length} nutrients per 100 g, ranked by % RDI.</p>
 
       {/* Desktop table */}
       <div className="hidden md:block overflow-x-auto">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { deriveFoodState } from '@/lib/food-state'
 
 function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLight: boolean): string {
   if (solubility === 'fat') return 'Cook with a small amount of healthy fat (e.g. olive oil) to maximise absorption'
@@ -11,6 +12,10 @@ function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLi
 // Food groups that aren't whole foods — extracted/isolated products sold as
 // supplements rather than something you'd cook or eat directly.
 const EXCLUDED_GROUPS = ['Supplements']
+
+// Land-animal meat groups are practically never eaten raw — hide raw-state
+// entries for these so users aren't offered "Chicken, raw" as a lookup result.
+const RAW_EXCLUDED_GROUPS = new Set(['Meat', 'Poultry'])
 
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
@@ -31,9 +36,13 @@ export async function GET(req: NextRequest) {
     for (const word of words) {
       query = query.ilike('name', `%${word}%`)
     }
-    const { data: matches } = await query.order('name').limit(50)
+    const { data: rawMatches } = await query.order('name').limit(50)
 
-    if (!matches || matches.length === 0) {
+    const matches = (rawMatches ?? []).filter((m: { name: string; food_group: string | null }) =>
+      !(m.food_group && RAW_EXCLUDED_GROUPS.has(m.food_group) && deriveFoodState(m.name, m.food_group) === 'raw')
+    )
+
+    if (matches.length === 0) {
       return NextResponse.json({ food: null, matches: [], nutrients: [] })
     }
 
@@ -47,13 +56,14 @@ export async function GET(req: NextRequest) {
 
   if (!food) return NextResponse.json({ food: null, matches: [], nutrients: [] })
 
-  // Get all raw nutrient amounts for this food — we need every value present
-  // so we can rank by %RDI, not just whichever happen to have the largest raw amount.
+  // Get all nutrient amounts for this food — we need every value present so
+  // we can rank by %RDI, not just whichever happen to have the largest amount.
+  // Each food entry already represents one specific prep state (raw or
+  // cooked, per its own FDC record), so no state filter is needed here.
   const { data: allFnRows, error } = await supabase
     .from('food_nutrients')
     .select('nutrient_id, amount_per_100g')
     .eq('food_id', food.id)
-    .eq('state', 'raw')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!allFnRows || allFnRows.length === 0) return NextResponse.json({ food, nutrients: [] })

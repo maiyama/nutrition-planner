@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
+import { deriveFoodState } from '@/lib/food-state'
 
 // SR Legacy uses legacy nutrient "number" strings (e.g. "203"), not the numeric IDs used by Foundation/Search
 const LEGACY_NUMBER_TO_DB: Record<string, number> = {
@@ -112,6 +113,10 @@ export async function POST(req: NextRequest) {
     const foodId = foodIdMap.get(food.fdcId as number)
     if (!foodId) { errors.push(`No DB id for FDC ${food.fdcId}`); continue }
 
+    const description = food.description as string
+    const foodGroup = foodGroupOverride(description) ?? NDB_PREFIX_TO_GROUP[ndbPrefix(String(food.ndbNumber))]
+    const state = deriveFoodState(description, foodGroup)
+
     const fns = (food.foodNutrients as Record<string, unknown>[]) ?? []
     for (const fn of fns) {
       const dbNutrientId = LEGACY_NUMBER_TO_DB[fn.number as string]
@@ -123,7 +128,7 @@ export async function POST(req: NextRequest) {
         food_id:        foodId,
         nutrient_id:    dbNutrientId,
         amount_per_100g: amount,
-        state:          'raw',
+        state,
         source:         'FDC SR Legacy',
       })
     }

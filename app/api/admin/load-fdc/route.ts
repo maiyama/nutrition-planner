@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase-admin'
+import { deriveFoodState } from '@/lib/food-state'
 
 // FDC nutrient number → our Supabase nutrient row ID
 const FDC_TO_DB_NUTRIENT: Record<number, number> = {
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
     }
     foodsLoaded++
 
+    const state = deriveFoodState(description, resolvedGroup)
     const foodNutrients = (food.foodNutrients as Record<string, unknown>[]) ?? []
     for (const fn of foodNutrients) {
       const dbNutrientId = FDC_TO_DB_NUTRIENT[fn.nutrientId as number]
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
           food_id: foodRow.id,
           nutrient_id: dbNutrientId,
           amount_per_100g: fn.value,
-          state: 'raw',
+          state,
           source: 'FDC Foundation',
         },
         { onConflict: 'food_id,nutrient_id,state' }
