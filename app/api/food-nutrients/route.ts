@@ -17,6 +17,25 @@ const EXCLUDED_GROUPS = ['Supplements']
 // entries for these so users aren't offered "Chicken, raw" as a lookup result.
 const RAW_EXCLUDED_GROUPS = new Set(['Meat', 'Poultry'])
 
+// USDA food names are usually plural ("Blueberries, raw") while users often
+// search the singular ("blueberry"), and vice versa — plain substring
+// matching misses these since "blueberries" doesn't contain "blueberry".
+// Generate plausible singular/plural forms so either spelling matches.
+function wordVariants(word: string): string[] {
+  const w = word.toLowerCase()
+  const variants = new Set<string>([w])
+
+  if (/[^aeiou]y$/.test(w)) variants.add(w.slice(0, -1) + 'ies') // berry → berries
+  else variants.add(w + 's')                                     // apple → apples
+  variants.add(w + 'es')                                         // tomato → tomatoes
+
+  if (w.endsWith('ies')) variants.add(w.slice(0, -3) + 'y')       // berries → berry
+  if (w.endsWith('es')) variants.add(w.slice(0, -2))              // tomatoes → tomato
+  if (w.endsWith('s') && !w.endsWith('ss')) variants.add(w.slice(0, -1)) // onions → onion
+
+  return [...variants]
+}
+
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
   const foodId = req.nextUrl.searchParams.get('foodId')
@@ -30,11 +49,14 @@ export async function GET(req: NextRequest) {
     const { data } = await supabase.from('foods').select('id, name, food_group').eq('id', Number(foodId)).single()
     food = data
   } else {
-    // Search food by name — match all words case-insensitively
+    // Search food by name — match all words case-insensitively, allowing
+    // either singular or plural spelling for each word.
     const words = (name as string).split(/\s+/).filter(Boolean)
     let query = supabase.from('foods').select('id, name, food_group').not('food_group', 'in', `(${EXCLUDED_GROUPS.join(',')})`)
     for (const word of words) {
-      query = query.ilike('name', `%${word}%`)
+      const sanitized = word.replace(/[,()]/g, '')
+      const orFilter = wordVariants(sanitized).map(v => `name.ilike.%${v}%`).join(',')
+      query = query.or(orFilter)
     }
     const { data: rawMatches } = await query.order('name').limit(50)
 
