@@ -118,9 +118,8 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
         </p>
       )}
 
-      {/* Nutrient-level guidance — same regardless of which food you pick, so shown once here rather than per row */}
+      {/* Absorption chemistry is a property of the nutrient itself, not the food, so it's the same for every row — shown once here rather than per row. Best prep DOES vary by food (retention differs per food group), so that stays in the table below. */}
       <div className="border border-sage/50 bg-mint/40 rounded-xl px-4 py-3 mb-4 text-xs text-gray-600 space-y-1">
-        <div><span className="font-semibold text-fern">Best prep:</span> {foods[0]?.best_prep_method}</div>
         <div>
           <span className="font-semibold text-fern">Combine with:</span>{' '}
           {foods[0]?.absorption_enhancers.length ? foods[0].absorption_enhancers.map(e => e.compound).join(', ') : '—'}
@@ -176,6 +175,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
               <th className="px-3 py-2">Food</th>
               <th className="px-3 py-2 text-right">Amount (per 100 g)</th>
               <th className="px-3 py-2 text-right">% RDI</th>
+              <th className="px-3 py-2">Best prep</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -201,6 +201,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
                     ? <span className={row.pct_rdi >= 25 ? 'text-forest font-semibold' : row.pct_rdi >= 10 ? 'text-fern' : 'text-gray-500'}>{row.pct_rdi}%</span>
                     : '—'}
                 </td>
+                <td className="px-3 py-2 text-gray-600 text-xs max-w-[220px]">{row.best_prep_method}</td>
               </tr>
             ))}
           </tbody>
@@ -229,6 +230,7 @@ export default function NutrientPage({ params }: { params: Promise<{ nutrientId:
                 {row.amount} {dri?.unit} ({row.state})
                 {row.estimated_cooked != null && <> · est. cooked: {row.estimated_cooked} {dri?.unit}</>}
               </div>
+              <div>Prep: {row.best_prep_method}</div>
             </div>
           </div>
         ))}

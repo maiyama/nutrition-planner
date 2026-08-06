@@ -9,6 +9,12 @@ function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLi
   return 'Steam or stir-fry to minimise leaching into cooking water; if boiling, use the liquid'
 }
 
+function joinMethods(methods: string[]): string {
+  // " / " rather than "," — individual method names already contain commas
+  // (e.g. "Baked, With drippings"), so a comma-joined list of ties reads ambiguously.
+  return methods.join(' / ')
+}
+
 function suggestedGrams(amountPer100g: number | null, driValue: number | null): number {
   if (!amountPer100g || !driValue) return 100
   // Aim for ~25% of RDI from this food, capped between 50–300 g
@@ -62,12 +68,16 @@ export async function GET(req: NextRequest) {
     .select('*')
     .eq('nutrient_id', nutrientId)
 
-  const bestRetentionByGroup = new Map<string, Record<string, unknown>>()
-  for (const rf of (retentionRows ?? []) as Record<string, unknown>[]) {
-    const group = rf.food_group as string
-    const existing = bestRetentionByGroup.get(group)
-    if (!existing || (rf.retention_pct as number) > (existing.retention_pct as number)) {
-      bestRetentionByGroup.set(group, rf)
+  // Group by food_group, keeping every method tied for the highest retention_pct —
+  // USDA's data frequently ties several prep methods at the same retention, and
+  // picking just one of them would present an arbitrary choice as "the best".
+  const bestRetentionByGroup = new Map<string, { prep_methods: string[]; retention_pct: number }>()
+  for (const rf of (retentionRows ?? []) as { food_group: string; prep_method: string; retention_pct: number }[]) {
+    const existing = bestRetentionByGroup.get(rf.food_group)
+    if (!existing || rf.retention_pct > existing.retention_pct) {
+      bestRetentionByGroup.set(rf.food_group, { prep_methods: [rf.prep_method], retention_pct: rf.retention_pct })
+    } else if (rf.retention_pct === existing.retention_pct) {
+      existing.prep_methods.push(rf.prep_method)
     }
   }
 
@@ -90,7 +100,7 @@ export async function GET(req: NextRequest) {
       : null
 
     const prepMethod = retention
-      ? `${retention.prep_method} (${retention.retention_pct}% retention)`
+      ? `${joinMethods(retention.prep_methods)} (${retention.retention_pct}% retention)`
       : genericPrep
 
     return {
