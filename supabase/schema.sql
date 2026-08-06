@@ -36,7 +36,8 @@ create table food_nutrients (
   nutrient_id integer references nutrients(id) on delete cascade,
   amount_per_100g numeric not null,
   state text check (state in ('raw', 'cooked')) not null,
-  source text default 'FDC'
+  source text default 'FDC',
+  unique (food_id, nutrient_id, state)
 );
 
 -- Retention factors from USDA (cooking method × food group × nutrient)
