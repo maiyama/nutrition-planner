@@ -9,10 +9,19 @@ function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLi
   return 'Steam or stir-fry to minimise leaching into cooking water; if boiling, use the liquid'
 }
 
-function joinMethods(methods: string[]): string {
+// Above this many tied methods, the individual names stop being useful —
+// e.g. Iron in Meat ties 46 of 66 USDA methods at 100% retention, meaning
+// virtually no method loses any iron. In that case the specific method
+// names carry no signal; what matters is that retention barely varies.
+const MAX_METHODS_TO_LIST = 4
+
+function describeRetention(prepMethods: string[], retentionPct: number): string {
+  if (prepMethods.length > MAX_METHODS_TO_LIST) {
+    return `${retentionPct}% retained regardless of cooking method`
+  }
   // " / " rather than "," — individual method names already contain commas
   // (e.g. "Baked, With drippings"), so a comma-joined list of ties reads ambiguously.
-  return methods.join(' / ')
+  return `${prepMethods.join(' / ')} (${retentionPct}% retention)`
 }
 
 function suggestedGrams(amountPer100g: number | null, driValue: number | null): number {
@@ -59,6 +68,11 @@ export async function GET(req: NextRequest) {
 
   const rows = (allRows ?? []).filter((r: Record<string, unknown>) => {
     const food = r.food as Record<string, unknown>
+    // Per-100g nutrient density for spices is meaningless as a recommendation —
+    // nobody eats 100g of a spice, so it always looks absurdly nutrient-dense.
+    // Keep spices for the direct food-lookup path though, where the user
+    // explicitly asked about that specific food rather than being shown a ranked list.
+    if (food.food_group === 'Spices & Herbs') return false
     return !isUnsafeRaw(food.name as string, food.food_group as string | null)
   }).slice(0, 30)
 
@@ -100,7 +114,7 @@ export async function GET(req: NextRequest) {
       : null
 
     const prepMethod = retention
-      ? `${joinMethods(retention.prep_methods)} (${retention.retention_pct}% retention)`
+      ? describeRetention(retention.prep_methods, retention.retention_pct)
       : genericPrep
 
     return {
