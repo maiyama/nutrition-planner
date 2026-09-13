@@ -473,8 +473,14 @@ function PortionsEditor() {
   const [msg, setMsg] = useState('')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState<Partial<FoodPortion>>({})
+  const [loadError, setLoadError] = useState('')
 
-  useEffect(() => { fetch('/api/admin/food-portions').then(r => r.json()).then(setPortions) }, [])
+  useEffect(() => {
+    fetch('/api/admin/food-portions').then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setPortions(data)
+      else setLoadError(data.error ?? 'Failed to load portions.')
+    })
+  }, [])
 
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(''), 3000) }
 
@@ -532,6 +538,11 @@ function PortionsEditor() {
   return (
     <div>
       {msg && <p className="mb-3 text-sm text-green-700 font-medium">{msg}</p>}
+      {loadError && (
+        <p className="mb-3 text-sm text-red-600 font-medium">
+          Couldn&apos;t load portions: {loadError}. Have you run the <code className="text-xs bg-red-50 px-1 rounded">food_portions</code> table SQL in Supabase yet?
+        </p>
+      )}
 
       <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mb-6">
         <p className="text-sm font-medium text-gray-800 mb-3">Add a portion size</p>
