@@ -73,6 +73,22 @@ create table dri_values (
   unit text not null
 );
 
+-- Hand-measured portion sizes ("1 medium beet" → grams). USDA doesn't
+-- reliably cover count-based measures for common produce, so this is
+-- maintained by hand from admin rather than pulled from FDC. Keyed by food_id
+-- (not a generic label) because weight-per-portion can genuinely differ by
+-- prep state for some foods (e.g. a cooked chicken breast loses moisture
+-- versus raw), even though for most whole produce it won't.
+create table food_portions (
+  id serial primary key,
+  food_id integer references foods(id) on delete cascade,
+  modifier text check (modifier in ('small', 'medium', 'large')) not null,
+  grams numeric not null,
+  note text,
+  created_at timestamptz default now(),
+  unique (food_id, modifier)
+);
+
 -- Change log for admin edits
 create table admin_change_log (
   id serial primary key,

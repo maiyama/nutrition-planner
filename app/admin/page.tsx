@@ -448,9 +448,207 @@ function StabilityEditor({ nutrients: initial }: { nutrients: Nutrient[] }) {
   )
 }
 
+// ── Portion Sizes ──────────────────────────────────────────────────────────
+
+type FoodMatch = { id: number; name: string; food_group: string | null }
+type FoodPortion = {
+  id: number
+  food_id: number
+  modifier: 'small' | 'medium' | 'large'
+  grams: number
+  note: string | null
+  food?: { id: number; name: string; food_group: string | null }
+}
+
+function PortionsEditor() {
+  const [portions, setPortions] = useState<FoodPortion[]>([])
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [matches, setMatches] = useState<FoodMatch[]>([])
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [modifier, setModifier] = useState<'small' | 'medium' | 'large'>('medium')
+  const [grams, setGrams] = useState('')
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editDraft, setEditDraft] = useState<Partial<FoodPortion>>({})
+
+  useEffect(() => { fetch('/api/admin/food-portions').then(r => r.json()).then(setPortions) }, [])
+
+  function flash(m: string) { setMsg(m); setTimeout(() => setMsg(''), 3000) }
+
+  async function search() {
+    if (!query.trim()) return
+    setSearching(true)
+    const res = await fetch(`/api/admin/food-search?name=${encodeURIComponent(query.trim())}`)
+    const data = await res.json()
+    setMatches(data.matches ?? [])
+    setSelected(new Set())
+    setSearching(false)
+  }
+
+  function toggleSelect(id: number) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  async function addPortions() {
+    setSaving(true)
+    const res = await fetch('/api/admin/food-portions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ food_ids: [...selected], modifier, grams: Number(grams), note }),
+    })
+    const data = await res.json()
+    setSaving(false)
+    if (!res.ok) { flash(data.error ?? 'Failed to save.'); return }
+    setPortions(prev => [...prev, ...data])
+    setSelected(new Set()); setMatches([]); setQuery(''); setGrams(''); setNote(''); setModifier('medium')
+    flash(`Added ${data.length} portion${data.length === 1 ? '' : 's'}.`)
+  }
+
+  async function saveEdit(id: number) {
+    setSaving(true)
+    const res = await fetch(`/api/admin/food-portions/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editDraft),
+    })
+    const updated = await res.json()
+    setSaving(false)
+    if (!res.ok) { flash(updated.error ?? 'Failed to save.'); return }
+    setPortions(prev => prev.map(p => p.id === id ? updated : p))
+    setEditingId(null); flash('Saved.')
+  }
+
+  async function deletePortion(id: number, label: string) {
+    if (!confirm(`Delete portion "${label}"?`)) return
+    await fetch(`/api/admin/food-portions/${id}`, { method: 'DELETE' })
+    setPortions(prev => prev.filter(p => p.id !== id)); flash('Deleted.')
+  }
+
+  return (
+    <div>
+      {msg && <p className="mb-3 text-sm text-green-700 font-medium">{msg}</p>}
+
+      <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mb-6">
+        <p className="text-sm font-medium text-gray-800 mb-3">Add a portion size</p>
+        <div className="flex gap-2 mb-3">
+          <input
+            value={query} onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && search()}
+            placeholder="Search a food, e.g. beets"
+            className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1"
+          />
+          <button onClick={search} disabled={searching || !query.trim()}
+            className="text-sm bg-gray-700 hover:bg-gray-800 disabled:bg-gray-300 text-white px-3 py-1.5 rounded">
+            {searching ? '…' : 'Search'}
+          </button>
+        </div>
+
+        {matches.length > 0 && (
+          <div className="mb-3 border border-gray-200 rounded bg-white max-h-48 overflow-y-auto divide-y divide-gray-100">
+            {matches.map(m => (
+              <label key={m.id} className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
+                <input type="checkbox" checked={selected.has(m.id)} onChange={() => toggleSelect(m.id)} />
+                <span className="text-gray-800">{m.name}</span>
+                {m.food_group && <span className="text-xs text-gray-400">{m.food_group}</span>}
+              </label>
+            ))}
+          </div>
+        )}
+
+        {selected.size > 0 && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Size</label>
+              <select value={modifier} onChange={e => setModifier(e.target.value as 'small' | 'medium' | 'large')}
+                className="border border-gray-300 rounded px-2 py-1.5 text-sm w-full">
+                <option value="small">small</option>
+                <option value="medium">medium</option>
+                <option value="large">large</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Weight (g)</label>
+              <input type="number" value={grams} onChange={e => setGrams(e.target.value)}
+                placeholder="e.g. 82" className="border border-gray-300 rounded px-2 py-1.5 text-sm w-full" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Note (optional)</label>
+              <input value={note} onChange={e => setNote(e.target.value)}
+                placeholder="e.g. measured myself" className="border border-gray-300 rounded px-2 py-1.5 text-sm w-full" />
+            </div>
+            <div className="sm:col-span-3">
+              <button onClick={addPortions} disabled={saving || !grams}
+                className="bg-green-700 hover:bg-green-800 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                {saving ? 'Saving…' : `Add for ${selected.size} selected food${selected.size === 1 ? '' : 's'}`}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead className="bg-gray-50 text-xs text-gray-500 text-left">
+            <tr>
+              <th className="px-3 py-2">Food</th>
+              <th className="px-3 py-2">Size</th>
+              <th className="px-3 py-2 text-right">Grams</th>
+              <th className="px-3 py-2">Note</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {portions.map(p => editingId === p.id ? (
+              <tr key={p.id} className="bg-yellow-50">
+                <td className="px-3 py-2 text-gray-700">{p.food?.name ?? p.food_id}</td>
+                <td className="px-3 py-2">
+                  <select value={editDraft.modifier ?? p.modifier} onChange={e => setEditDraft(d => ({ ...d, modifier: e.target.value as 'small' | 'medium' | 'large' }))}
+                    className="border border-gray-300 rounded px-2 py-1 text-xs">
+                    <option value="small">small</option>
+                    <option value="medium">medium</option>
+                    <option value="large">large</option>
+                  </select>
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <input type="number" value={editDraft.grams ?? p.grams} onChange={e => setEditDraft(d => ({ ...d, grams: Number(e.target.value) }))}
+                    className="border border-gray-300 rounded px-2 py-1 text-xs w-20 text-right" />
+                </td>
+                <td className="px-3 py-2">
+                  <input value={editDraft.note ?? p.note ?? ''} onChange={e => setEditDraft(d => ({ ...d, note: e.target.value }))}
+                    className="border border-gray-300 rounded px-2 py-1 text-xs w-full" />
+                </td>
+                <td className="px-3 py-2 flex gap-2">
+                  <button onClick={() => saveEdit(p.id)} disabled={saving} className="text-xs bg-green-700 text-white px-2 py-1 rounded">{saving ? '…' : 'Save'}</button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                </td>
+              </tr>
+            ) : (
+              <tr key={p.id} className="hover:bg-gray-50">
+                <td className="px-3 py-2 text-gray-800 font-medium">{p.food?.name ?? p.food_id}</td>
+                <td className="px-3 py-2 text-gray-600">{p.modifier}</td>
+                <td className="px-3 py-2 text-right text-gray-700">{p.grams} g</td>
+                <td className="px-3 py-2 text-xs text-gray-500">{p.note ?? <span className="text-gray-300">—</span>}</td>
+                <td className="px-3 py-2 flex gap-2">
+                  <button onClick={() => { setEditingId(p.id); setEditDraft({}) }} className="text-xs text-blue-600 hover:underline">Edit</button>
+                  <button onClick={() => deletePortion(p.id, `${p.modifier} ${p.food?.name ?? p.food_id}`)} className="text-xs text-red-500 hover:underline">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Admin Page ────────────────────────────────────────────────────────
 
-const TABS = ['FDC Data', 'Absorption Rules', 'Stability Flags'] as const
+const TABS = ['FDC Data', 'Absorption Rules', 'Stability Flags', 'Portion Sizes'] as const
 type Tab = typeof TABS[number]
 
 export default function AdminPage() {
@@ -480,6 +678,7 @@ export default function AdminPage() {
       {tab === 'FDC Data' && <><FdcLoader /><SrLegacyLoader /></>}
       {tab === 'Absorption Rules' && <AbsorptionRulesEditor nutrients={nutrients} />}
       {tab === 'Stability Flags' && <StabilityEditor nutrients={nutrients} />}
+      {tab === 'Portion Sizes' && <PortionsEditor />}
     </div>
   )
 }

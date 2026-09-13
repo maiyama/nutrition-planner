@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { isUnsafeRaw } from '@/lib/food-state'
+import { searchFoodsByName } from '@/lib/food-search'
 
 function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLight: boolean): string {
   if (solubility === 'fat') return 'Cook with a small amount of healthy fat (e.g. olive oil) to maximise absorption'
@@ -13,24 +14,10 @@ function bestPrepMethod(solubility: string | null, stableHeat: boolean, stableLi
 // supplements rather than something you'd cook or eat directly.
 const EXCLUDED_GROUPS = ['Supplements']
 
-// USDA food names are usually plural ("Blueberries, raw") while users often
-// search the singular ("blueberry"), and vice versa — plain substring
-// matching misses these since "blueberries" doesn't contain "blueberry".
-// Generate plausible singular/plural forms so either spelling matches.
-function wordVariants(word: string): string[] {
-  const w = word.toLowerCase()
-  const variants = new Set<string>([w])
-
-  if (/[^aeiou]y$/.test(w)) variants.add(w.slice(0, -1) + 'ies') // berry → berries
-  else variants.add(w + 's')                                     // apple → apples
-  variants.add(w + 'es')                                         // tomato → tomatoes
-
-  if (w.endsWith('ies')) variants.add(w.slice(0, -3) + 'y')       // berries → berry
-  if (w.endsWith('es')) variants.add(w.slice(0, -2))              // tomatoes → tomato
-  if (w.endsWith('s') && !w.endsWith('ss')) variants.add(w.slice(0, -1)) // onions → onion
-
-  return [...variants]
-}
+// A failed Supabase request looks identical to "no rows matched" if we only
+// destructure `data` — that mislabels an outage as "food not found". Surface
+// it distinctly so a user report like "nothing is found" points at the DB.
+const DB_ERROR_MESSAGE = 'Supabase query could not be made. Contact admin to check the database.'
 
 export async function GET(req: NextRequest) {
   const name = req.nextUrl.searchParams.get('name')?.trim()
@@ -42,21 +29,18 @@ export async function GET(req: NextRequest) {
   let food: { id: number; name: string; food_group: string | null } | null = null
 
   if (foodId) {
-    const { data } = await supabase.from('foods').select('id, name, food_group').eq('id', Number(foodId)).single()
+    const { data, error: foodError } = await supabase.from('foods').select('id, name, food_group').eq('id', Number(foodId)).single()
+    // PGRST116 = .single() found no matching row, which is a legitimate "not found" — only
+    // any other error code indicates the request itself couldn't reach the database.
+    if (foodError && foodError.code !== 'PGRST116') return NextResponse.json({ error: DB_ERROR_MESSAGE }, { status: 503 })
     food = data
   } else {
     // Search food by name — match all words case-insensitively, allowing
     // either singular or plural spelling for each word.
-    const words = (name as string).split(/\s+/).filter(Boolean)
-    let query = supabase.from('foods').select('id, name, food_group').not('food_group', 'in', `(${EXCLUDED_GROUPS.join(',')})`)
-    for (const word of words) {
-      const sanitized = word.replace(/[,()]/g, '')
-      const orFilter = wordVariants(sanitized).map(v => `name.ilike.%${v}%`).join(',')
-      query = query.or(orFilter)
-    }
-    const { data: rawMatches } = await query.order('name').limit(50)
+    const searchResult = await searchFoodsByName(supabase, name as string, { excludeGroups: EXCLUDED_GROUPS })
+    if ('error' in searchResult) return NextResponse.json({ error: DB_ERROR_MESSAGE }, { status: 503 })
 
-    const matches = (rawMatches ?? []).filter((m: { name: string; food_group: string | null }) =>
+    const matches = searchResult.matches.filter((m: { name: string; food_group: string | null }) =>
       !isUnsafeRaw(m.name, m.food_group)
     )
 
@@ -83,7 +67,7 @@ export async function GET(req: NextRequest) {
     .select('nutrient_id, amount_per_100g')
     .eq('food_id', food.id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: DB_ERROR_MESSAGE }, { status: 503 })
   if (!allFnRows || allFnRows.length === 0) return NextResponse.json({ food, nutrients: [] })
 
   const nutrientIds = allFnRows.map((r: { nutrient_id: number }) => r.nutrient_id)

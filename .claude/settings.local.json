@@ -19,7 +19,25 @@
       "WebFetch(domain:pubmed.ncbi.nlm.nih.gov)",
       "WebFetch(domain:www.canada.ca)",
       "WebFetch(domain:ods.od.nih.gov)",
-      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)"
+      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)",
+      "Bash(node *)",
+      "Bash(grep -rl \"^# \\\\`cookies\\\\`\\\\|api-reference/functions/cookies\" /Users/maiyamamoto/nutrition_planner/node_modules/next/dist/docs/01-app/03-api-reference/04-functions)",
+      "Bash(openssl rand *)",
+      "Bash(npx tsc *)",
+      "Bash(break)",
+      "Read(//private/tmp/**)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(rm -f /tmp/admin_cookies.txt /tmp/nutrition-dev.log)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('food:', d['food']['name'] if d['food'] else None, '| matches:', len\\(d.get\\('matches',[]\\)\\) \\)\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d\\)\")",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs kill -9)",
+      "Bash(git check-ignore *)",
+      "WebSearch",
+      "Bash(python3 -c \"import PyPDF2\")",
+      "Bash(python3 -c \"import pdfplumber\")",
+      "Bash(brew --version)",
+      "Bash(pip install *)"
     ]
   }
 }

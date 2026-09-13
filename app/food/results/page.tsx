@@ -63,6 +63,16 @@ function FoodResultsContent() {
 
   if (loading) return <p className="text-sm text-gray-400">Looking up &ldquo;{name}&rdquo;…</p>
 
+  if (data?.error) {
+    return (
+      <div className="max-w-xl">
+        <p className="text-xs text-gray-400 mb-4"><a href="/food" className="hover:text-fern transition-colors">← Try another food</a></p>
+        <p className="text-forest font-semibold mb-1">Couldn&apos;t look up &ldquo;{name}&rdquo;.</p>
+        <p className="text-sm text-gray-500">{data.error}</p>
+      </div>
+    )
+  }
+
   // Multiple matches and nothing picked yet — let the user choose.
   if (!selectedId && matches) {
     return (
