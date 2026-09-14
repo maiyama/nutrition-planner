@@ -602,6 +602,7 @@ function PortionsEditor() {
         )}
       </div>
 
+      {query.trim() && (
       <div className="overflow-x-auto">
         <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
           <thead className="bg-gray-50 text-xs text-gray-500 text-left">
@@ -614,7 +615,7 @@ function PortionsEditor() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {portions.map(p => editingId === p.id ? (
+            {portions.filter(p => (p.food?.name ?? '').toLowerCase().includes(query.trim().toLowerCase())).map(p => editingId === p.id ? (
               <tr key={p.id} className="bg-yellow-50">
                 <td className="px-3 py-2 text-gray-700">{p.food?.name ?? p.food_id}</td>
                 <td className="px-3 py-2">
@@ -653,6 +654,7 @@ function PortionsEditor() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   )
 }
